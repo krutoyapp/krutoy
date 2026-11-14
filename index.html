@@ -59,7 +59,7 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 .b1{background:var(--ac);top:12%;left:-60px}.b2{background:var(--ac2);bottom:12%;right:-60px;animation-delay:-2s}
 @keyframes float{to{transform:translate(50px,-40px) scale(1.25)}}
 .sl{position:relative;display:flex;font-size:60px;font-weight:900;animation:glow 1.6s ease-in-out 1.3s infinite}
-.sl span{display:inline-block;opacity:0;transform:translateY(50px) scale(.3) rotate(-14deg);animation:letter .65s cubic-bezier(.2,1.7,.4,1) forwards;background:linear-gradient(135deg,#0b6e3f,#25c26f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sl span{display:inline-block;opacity:0;transform:translateY(50px) scale(.3) rotate(-14deg);animation:letter .65s cubic-bezier(.2,1.7,.4,1) forwards;color:#0b7a45}
 @keyframes letter{to{opacity:1;transform:none}}@keyframes glow{50%{filter:drop-shadow(0 0 18px rgba(60,220,130,.6))}}
 .sub{position:relative;margin-top:10px;opacity:0;animation:fup .6s ease-out 1.2s forwards}
 @keyframes fup{to{opacity:1}}
@@ -76,7 +76,7 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 .hrt{width:18px;height:18px;vertical-align:-3px}
 .act.lk.on{background:#ffe3ee;color:#ff3b7f;border-color:#ff3b7f}
 @media (prefers-color-scheme:dark){.act.lk.on{background:#3a1626}}
-@media (prefers-color-scheme:dark){.logo{color:#5be59a}}
+@media (prefers-color-scheme:dark){.logo,.sl span{color:#5be59a}}
 </style>
 </head>
 <body>
@@ -180,7 +180,7 @@ function card(p,by){
 
 function authUI(){
   $("#nav").style.display="none";$("#me").textContent="";const reg=mode==="up";
-  app.innerHTML=`<div class="card pad" id="authbox"><h2 style="margin-top:0">${reg?"Регистрация":"Вход"} в krutoy</h2>${reg?`<input type="text" id="an" maxlength="20" placeholder="Ник" value="${esc(aNick)}" style="margin-bottom:8px">`:""}<input type="email" id="ae" placeholder="Почта" value="${esc(aEm)}"><input type="password" id="ap" placeholder="Пароль (от 6 символов)" style="margin-top:8px"><div class="mut" style="color:#e11d48;margin-top:8px">${esc(err)}</div><button data-a="auth" style="width:100%;margin-top:8px">${reg?"Создать аккаунт":"Войти"}</button><button class="ghost" data-a="asw" style="width:100%">${reg?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация"}</button></div>`;
+  app.innerHTML=`<div class="card pad" id="authbox"><h2 style="margin-top:0">${reg?"Регистрация":"Вход"} в <span class="logo" style="font-size:inherit">krutoy</span></h2>${reg?`<input type="text" id="an" maxlength="20" placeholder="Ник" value="${esc(aNick)}" style="margin-bottom:8px">`:""}<input type="email" id="ae" placeholder="Почта" value="${esc(aEm)}"><input type="password" id="ap" placeholder="Пароль (от 6 символов)" style="margin-top:8px"><div class="mut" style="color:#e11d48;margin-top:8px">${esc(err)}</div><button data-a="auth" style="width:100%;margin-top:8px">${reg?"Создать аккаунт":"Войти"}</button><button class="ghost" data-a="asw" style="width:100%">${reg?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация"}</button></div>`;
 }
 
 function render(){
