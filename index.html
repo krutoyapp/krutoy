@@ -94,7 +94,7 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 const sb=supabase.createClient("https://mwryechyvhztkehifbmp.supabase.co","sb_publishable_nZQDoTQ7fzBeMH7an7JFEg_7GLItpHs");
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
+let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],FC={},tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
 const nick=id=>(P[id]&&P[id].nick)||"Аноним",name=id=>esc(nick(id));
 const ago=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 const heart=on=>`<svg class="hrt" viewBox="0 0 24 24" fill="${on?"#ff3b7f":"none"}" stroke="${on?"#ff3b7f":"currentColor"}" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2 0 3.6 1.1 5.3 3 1.7-1.9 3.3-3 5.3-3 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
@@ -162,8 +162,8 @@ async function up(b){const path=me.id+"/"+crypto.randomUUID()+".jpg",{error}=awa
 const ru=m=>/Invalid login/i.test(m)?"Неверная почта или пароль":/already/i.test(m)?"Эта почта уже зарегистрирована":/Database error/i.test(m)?"Этот ник уже занят":/Password/i.test(m)?"Пароль слишком короткий (от 6 символов)":m;
 
 async function load(){
-  const [a,b,c,d,f,r]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at"),sb.from("follows").select("*"),sb.from("reposts").select("*")]);
-  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];fol=f.data||[];rep=r.data||[];render();
+  const [a,b,c,d,f,r,k]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at"),sb.from("follows").select("*"),sb.from("reposts").select("*"),sb.rpc("follower_counts")]);
+  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];fol=f.data||[];rep=r.data||[];FC={};if(k.error)fol.forEach(x=>FC[x.following_id]=(FC[x.following_id]||0)+1);else(k.data||[]).forEach(x=>FC[x.user_id]=+x.n);render();
 }
 const score=(p,t)=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filter(x=>x.post_id===p.id).length;return(l+c*2+1)/Math.pow((Date.now()-new Date(t||p.created_at))/864e5+1,.7)};
 
@@ -205,7 +205,7 @@ function render(){
     h=`<div class="card pad big"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*" multiple hidden><button class="pickz" data-a="pick" ${pend.length>=10?"disabled":""}>${pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Выбрать фото (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`<div class="th"><img src="${x.u}" alt="" data-a="edit" data-id="${i}"><b data-a="rm" data-id="${i}">✕</b><i class="pen">✏️</i></div>`).join("")}</div>${pend.length?'<div class="mut" style="margin-top:6px">Нажми на фото, чтобы нарисовать или добавить текст ✏️</div>':""}<textarea id="cap" maxlength="500" placeholder="Что расскажешь про эти фото?" style="margin-top:12px;height:140px">${esc(capD)}</textarea><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
   }else{
     const pu=viewU||me.id,pr=P[pu]||{},own=pu===me.id,mp=posts.filter(p=>p.user_id===pu),lk=likes.filter(l=>mp.some(p=>p.id===l.post_id)).length;
-    h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad prof"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div><b>${fol.filter(f=>f.following_id===pu).length}</b><span class="mut">подписчиков</span></div><div><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div></div></div></div>`;
+    h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad prof"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div><b>${FC[pu]||0}</b><span class="mut">подписчиков</span></div>${own?`<div><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div>`:""}</div></div></div>`;
     if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="300" placeholder="Расскажи о себе (до 300 символов)" style="height:170px">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><div class="mut" id="bioc" style="text-align:right">${(bioD!==null?bioD:(pr.bio||"")).length}/300</div><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div>`;
     else{const isF=fol.some(f=>f.follower_id===me.id&&f.following_id===pu);h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p><button data-a="follow" data-id="${pu}" class="${isF?"out":""}">${isF?"Вы подписаны ✓":"Подписаться"}</button>`}
     h+="</div>"+(()=>{const canR=own||fol.some(f=>f.follower_id===me.id&&f.following_id===pu),it=[...mp.map(p=>({p,by:null,t:p.created_at})),...(canR?rep.filter(r=>r.user_id===pu).map(r=>({p:posts.find(x=>x.id===r.post_id),by:pu,t:r.created_at})).filter(x=>x.p):[])].sort((a,b)=>new Date(b.t)-new Date(a.t));return it.length?it.map(x=>card(x.p,x.by)).join(""):'<div class="note">Постов пока нет</div>'})();
@@ -231,7 +231,7 @@ app.addEventListener("click",async e=>{
     if(reg&&!r.data.session){err="Проверь почту и подтверди её, потом войди";mode="in";return authUI()}
     err="";return;
   }
-  if(a==="follow"){const m=fol.find(f=>f.follower_id===me.id&&f.following_id===id),k={follower_id:me.id,following_id:id};if(m)fol=fol.filter(f=>f!==m);else fol.push(k);render();await(m?sb.from("follows").delete().match(k):sb.from("follows").insert(k));return}
+  if(a==="follow"){const m=fol.find(f=>f.follower_id===me.id&&f.following_id===id),k={follower_id:me.id,following_id:id};if(m)fol=fol.filter(f=>f!==m);else fol.push(k);FC[id]=Math.max(0,(FC[id]||0)+(m?-1:1));render();await(m?sb.from("follows").delete().match(k):sb.from("follows").insert(k));return}
   if(a==="edit")return edit(+id);
   if(a==="rep"){const p=posts.find(x=>x.id===id);if(!p||p.user_id===me.id)return;const m=rep.find(r=>r.user_id===me.id&&r.post_id===id),k={user_id:me.id,post_id:id};if(m)rep=rep.filter(r=>r!==m);else rep.push({...k,created_at:new Date().toISOString()});render();await(m?sb.from("reposts").delete().match(k):sb.from("reposts").insert(k));return}
   if(a==="logout"){await sb.auth.signOut();return}
