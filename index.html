@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>krutoy</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f6f4ff;--card:#fff;--tx:#1b1630;--mut:#7a7394;--ac:#7c3aed;--ac2:#ec4899;--bd:#e6e1f5;--inp:#f1eefb}
+@media (prefers-color-scheme:dark){:root{--bg:#120f1f;--card:#1c1830;--tx:#f3f0ff;--mut:#9d96b8;--bd:#2d2748;--inp:#262040}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding-top:env(safe-area-inset-top,0px)}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--bd)}
+.logo{font-size:26px;font-weight:800;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+main{max-width:560px;margin:0 auto;padding:12px 12px 100px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;margin-bottom:14px;overflow:hidden}
+.pad{padding:14px}
+input[type=text],input[type=email],input[type=password],textarea{width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--inp);color:var(--tx);font:inherit}
+textarea{resize:none;height:80px}
+button{font:inherit;border:0;border-radius:12px;padding:10px 16px;background:linear-gradient(90deg,var(--ac),var(--ac2));color:#fff;font-weight:600;cursor:pointer;transition:transform .12s,opacity .2s}
+button:active{transform:scale(.9)}button:disabled{opacity:.5}
+button.ghost{background:none;color:var(--mut);padding:6px 8px}
+button.out{background:none;color:var(--tx);border:1px solid var(--bd)}
+.row{display:flex;gap:8px;align-items:center}
+.who{font-weight:700;cursor:pointer}.mut{color:var(--mut);font-size:13px}
+.ph{width:100%;display:block;max-height:560px;object-fit:cover}
+.on{color:var(--ac2)}.heart{display:inline-block}.pop{animation:pop .45s}
+@keyframes pop{40%{transform:scale(1.6)}}
+.cmwrap.anim{animation:slide .25s ease-out}
+@keyframes slide{from{opacity:0;transform:translateY(-8px)}}
+.cm{padding:2px 14px;font-size:15px}
+.note{text-align:center;color:var(--mut);padding:30px 10px}
+.av{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;object-fit:cover}
+.av.s{width:38px;height:38px;font-size:16px}
+.stats{display:flex;gap:24px;margin-top:6px}.stats b{display:block;font-size:18px}
+.thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.th{position:relative;aspect-ratio:1}.th img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.th b{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.carw{position:relative}.car{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.car::-webkit-scrollbar{display:none}.car .ph{flex:0 0 100%;scroll-snap-align:center}
+.badge{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:3px 9px;border-radius:12px}
+.lb{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;animation:fade .2s}
+.lb img{max-width:92vw;max-height:86vh;border-radius:18px;animation:zin .25s ease-out}
+@keyframes fade{from{opacity:0}}@keyframes zin{from{transform:scale(.6);opacity:0}}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:none;background:var(--card);border-top:1px solid var(--bd);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;background:none;color:var(--mut);font-size:11px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--ac)}
+.splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:opacity .5s,transform .5s}
+.splash.out{opacity:0;transform:scale(1.15);pointer-events:none}
+.blob{position:absolute;width:260px;height:260px;border-radius:50%;filter:blur(60px);opacity:.45;animation:float 5s ease-in-out infinite alternate}
+.b1{background:var(--ac);top:12%;left:-60px}.b2{background:var(--ac2);bottom:12%;right:-60px;animation-delay:-2s}
+@keyframes float{to{transform:translate(50px,-40px) scale(1.25)}}
+.sl{position:relative;display:flex;font-size:60px;font-weight:900;animation:glow 1.6s ease-in-out 1.3s infinite}
+.sl span{display:inline-block;opacity:0;transform:translateY(50px) scale(.3) rotate(-14deg);animation:letter .65s cubic-bezier(.2,1.7,.4,1) forwards;background:linear-gradient(135deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+@keyframes letter{to{opacity:1;transform:none}}@keyframes glow{50%{filter:drop-shadow(0 0 18px rgba(236,72,153,.6))}}
+.sub{position:relative;margin-top:10px;opacity:0;animation:fup .6s ease-out 1.2s forwards}
+@keyframes fup{to{opacity:1}}
+.bar{position:relative;width:130px;height:4px;border-radius:4px;background:var(--bd);overflow:hidden;margin-top:26px}
+.bar i{display:block;height:100%;width:40%;border-radius:4px;background:linear-gradient(90deg,var(--ac),var(--ac2));animation:sb 1s ease-in-out infinite}
+@keyframes sb{from{transform:translateX(-100%)}to{transform:translateX(330%)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.sl span,.sub{opacity:1!important;transform:none!important}}
+</style>
+</head>
+<body>
+<div class="splash" id="splash"><div class="blob b1"></div><div class="blob b2"></div><div class="sl"><span style="animation-delay:.1s">k</span><span style="animation-delay:.25s">r</span><span style="animation-delay:.4s">u</span><span style="animation-delay:.55s">t</span><span style="animation-delay:.7s">o</span><span style="animation-delay:.85s">y</span></div><div class="mut sub">соцсеть для реально крутых</div><div class="bar"><i></i></div></div>
+<header><span class="logo">krutoy</span><span class="mut" id="me"></span></header>
+<main id="app"></main>
+<nav id="nav">
+<button data-tab="feed"><span>🔥</span>Рекомендации</button>
+<button data-tab="search"><span>🔍</span>Поиск</button>
+<button data-tab="add"><span>➕</span>Опубликовать</button>
+<button data-tab="me"><span>👤</span>Профиль</button>
+</nav>
+<script>
+const sb=supabase.createClient("https://mwryechyvhztkehifbmp.supabase.co","sb_publishable_nZQDoTQ7fzBeMH7an7JFEg_7GLItpHs");
+const $=s=>document.querySelector(s),app=$("#app");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let me=null,P={},posts=[],likes=[],coms=[],tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
+const nick=id=>(P[id]&&P[id].nick)||"Аноним",name=id=>esc(nick(id));
+const ago=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+const t0=Date.now();
+function hide(){const s=$("#splash");if(!s||s.dataset.h)return;s.dataset.h=1;setTimeout(()=>{s.classList.add("out");setTimeout(()=>s.remove(),600)},Math.max(0,2300-(Date.now()-t0)))}
+setTimeout(hide,6000);
+function zoom(src){const d=document.createElement("div");d.className="lb";d.innerHTML='<img alt="">';d.firstChild.src=src;d.onclick=()=>d.remove();document.body.appendChild(d)}
+const av=(id,s)=>{const p=P[id]||{},c="av"+(s?" s":"");return p.ava?`<img class="${c}" src="${p.ava}" alt="" data-a="zoom" data-src="${p.ava}" style="cursor:zoom-in">`:`<div class="${c}">${esc(nick(id).charAt(0).toUpperCase())}</div>`};
+function rs(file,mx){return new Promise((ok,no)=>{const im=new Image();im.onerror=no;im.onload=()=>{const k=Math.min(1,mx/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);c.toBlob(ok,"image/jpeg",.82)};im.src=URL.createObjectURL(file)})}
+async function up(b){const path=me.id+"/"+crypto.randomUUID()+".jpg",{error}=await sb.storage.from("photos").upload(path,b,{contentType:"image/jpeg"});if(error)throw error;return sb.storage.from("photos").getPublicUrl(path).data.publicUrl}
+const ru=m=>/Invalid login/i.test(m)?"Неверная почта или пароль":/already/i.test(m)?"Эта почта уже зарегистрирована":/Database error/i.test(m)?"Этот ник уже занят":/Password/i.test(m)?"Пароль слишком короткий (от 6 символов)":m;
+
+async function load(){
+  const [a,b,c,d]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at")]);
+  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];render();
+}
+const score=p=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filter(x=>x.post_id===p.id).length;return(l+c*2+1)/Math.pow((Date.now()-new Date(p.created_at))/864e5+1,.7)};
+
+function card(p){
+  const pl=likes.filter(l=>l.post_id===p.id),mine=pl.some(l=>l.user_id===me.id),pc=coms.filter(c=>c.post_id===p.id),im=p.images||[];
+  const sl=im.length>1?`<div class="carw"><div class="car" data-car="${p.id}" data-n="${im.length}">${im.map(s=>`<img class="ph" src="${s}" alt="">`).join("")}</div><span class="badge" id="bd-${p.id}">${(carPos[p.id]||0)+1}/${im.length}</span></div>`:`<img class="ph" src="${im[0]||""}" alt="">`;
+  let h=`<div class="card"><div class="pad row">${av(p.user_id,1)}<div style="flex:1"><div class="who" data-a="user" data-id="${p.user_id}">${name(p.user_id)}</div><div class="mut">${ago(p.created_at)}</div></div>${p.user_id===me.id?`<button class="ghost" data-a="del" data-id="${p.id}">🗑</button>`:""}</div>${sl}<div class="pad"><div class="row"><button class="ghost ${mine?"on":""}" data-a="like" data-id="${p.id}"><span class="heart ${pulse===p.id+"l"?"pop":""}">${mine?"❤️":"🤍"}</span> ${pl.length}</button><button class="ghost ${openC[p.id]?"on":""}" data-a="tg" data-id="${p.id}">💬 ${pc.length}</button></div>${p.caption?`<div>${esc(p.caption)}</div>`:""}</div>`;
+  if(!openC[p.id])return h+"</div>";
+  h+=`<div class="cmwrap ${pulse===p.id+"c"?"anim":""}">`;
+  if(!pc.length)h+='<div class="cm mut">Комментариев пока нет</div>';
+  for(const c of pc)h+=`<div class="cm"><b>${name(c.user_id)}</b> ${esc(c.text)}</div>`;
+  return h+`<div class="pad row"><input type="text" data-c="${p.id}" maxlength="200" placeholder="Комментарий…"><button data-a="send" data-id="${p.id}">→</button></div></div></div>`;
+}
+
+function authUI(){
+  $("#nav").style.display="none";$("#me").textContent="";const reg=mode==="up";
+  app.innerHTML=`<div class="card pad" id="authbox"><h2 style="margin-top:0">${reg?"Регистрация":"Вход"} в krutoy</h2>${reg?`<input type="text" id="an" maxlength="20" placeholder="Ник" value="${esc(aNick)}" style="margin-bottom:8px">`:""}<input type="email" id="ae" placeholder="Почта" value="${esc(aEm)}"><input type="password" id="ap" placeholder="Пароль (от 6 символов)" style="margin-top:8px"><div class="mut" style="color:var(--ac2);margin-top:8px">${esc(err)}</div><button data-a="auth" style="width:100%;margin-top:8px">${reg?"Создать аккаунт":"Войти"}</button><button class="ghost" data-a="asw" style="width:100%">${reg?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация"}</button></div>`;
+}
+
+function render(){
+  if(!me&&document.activeElement&&document.activeElement.closest("#authbox"))return;
+  app.querySelectorAll("[data-c]").forEach(i=>drafts[i.dataset.c]=i.value);
+  if($("#cap"))capD=$("#cap").value;if($("#bio"))bioD=$("#bio").value;
+  const qf=document.activeElement&&document.activeElement.id==="q";
+  if(!me)return authUI();
+  if(!P[me.id]){app.innerHTML='<div class="note">Загрузка профиля…</div>';return}
+  $("#nav").style.display="flex";$("#me").textContent="@"+nick(me.id);
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("cur",b.dataset.tab===tab));
+  let h="";
+  if(tab==="feed"){const l=posts.slice().sort((a,b)=>score(b)-score(a));h=l.length?l.map(card).join(""):'<div class="note">Пока нет постов. Нажми ➕ и опубликуй первое фото!</div>'}
+  else if(tab==="search"){
+    const s=q.trim().toLowerCase();h=`<div class="card pad"><input type="text" id="q" placeholder="Поиск людей и постов" value="${esc(q)}"></div>`;
+    if(!s)h+='<div class="note">Введи ник человека или слово из подписи к посту</div>';
+    else{const pp=Object.keys(P).filter(k=>nick(k).toLowerCase().includes(s)||(P[k].bio||"").toLowerCase().includes(s)),ps=posts.filter(p=>(p.caption||"").toLowerCase().includes(s)||nick(p.user_id).toLowerCase().includes(s));
+      if(pp.length){h+='<h4 class="mut">Люди</h4>'+pp.map(k=>`<div class="card pad row" data-a="user" data-id="${k}" style="cursor:pointer">${av(k,1)}<div><div class="who">${name(k)}</div><div class="mut">${esc((P[k].bio||"").slice(0,60))}</div></div></div>`).join("")}
+      if(ps.length)h+='<h4 class="mut">Посты</h4>'+ps.map(card).join("");
+      if(!pp.length&&!ps.length)h+='<div class="note">Ничего не найдено</div>'}
+  }else if(tab==="add"){
+    h=`<div class="card pad"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*" multiple hidden><button class="out" data-a="pick" ${pend.length>=10?"disabled":""}>${pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Выбрать фото (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`<div class="th"><img src="${x.u}" alt=""><b data-a="rm" data-id="${i}">✕</b></div>`).join("")}</div><input type="text" id="cap" maxlength="200" placeholder="Подпись" style="margin-top:10px" value="${esc(capD)}"><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
+  }else{
+    const pu=viewU||me.id,pr=P[pu]||{},own=pu===me.id,mp=posts.filter(p=>p.user_id===pu),lk=likes.filter(l=>mp.some(p=>p.id===l.post_id)).length;
+    h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div></div></div></div>`;
+    if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="150" placeholder="Расскажи о себе">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div>`;
+    else h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p>`;
+    h+="</div>"+(mp.length?mp.map(card).join(""):'<div class="note">Постов пока нет</div>');
+  }
+  app.innerHTML=h;
+  app.querySelectorAll("[data-c]").forEach(i=>i.value=drafts[i.dataset.c]||"");
+  app.querySelectorAll("[data-car]").forEach(c=>{const id=c.dataset.car;c.scrollLeft=(carPos[id]||0)*c.clientWidth;c.onscroll=()=>{const i=Math.round(c.scrollLeft/c.clientWidth);if(carPos[id]!==i){carPos[id]=i;const b=$("#bd-"+id);if(b)b.textContent=(i+1)+"/"+c.dataset.n}}});
+  const qi=$("#q");if(qi&&qf){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length)}
+  pulse=null;
+}
+
+app.addEventListener("click",async e=>{
+  const t=e.target.closest("[data-a]");if(!t)return;const a=t.dataset.a,id=t.dataset.id;
+  try{
+  if(a==="zoom")return zoom(t.dataset.src);
+  if(a==="asw"){aEm=$("#ae").value;mode=mode==="in"?"up":"in";err="";return authUI()}
+  if(a==="auth"){
+    const em=$("#ae").value.trim(),pw=$("#ap").value,reg=mode==="up",n=reg?$("#an").value.trim():"";aEm=em;aNick=n;
+    if(!em||pw.length<6||(reg&&n.length<2)){err=reg?"Введи ник, почту и пароль (от 6 символов)":"Введи почту и пароль";return authUI()}
+    t.disabled=true;
+    const r=reg?await sb.auth.signUp({email:em,password:pw,options:{data:{nick:n}}}):await sb.auth.signInWithPassword({email:em,password:pw});
+    if(r.error){err=ru(r.error.message);return authUI()}
+    if(reg&&!r.data.session){err="Проверь почту и подтверди её, потом войди";mode="in";return authUI()}
+    err="";return;
+  }
+  if(a==="logout"){await sb.auth.signOut();return}
+  if(a==="user"){tab="me";viewU=id===me.id?null:id;render();return scrollTo(0,0)}
+  if(a==="back"){viewU=null;return render()}
+  if(a==="pick")return $("#file").click();
+  if(a==="chg")return $("#avf").click();
+  if(a==="rm"){pend.splice(+id,1);return render()}
+  if(a==="like"){
+    const m=likes.find(l=>l.post_id===id&&l.user_id===me.id),k={post_id:id,user_id:me.id};
+    if(m)likes=likes.filter(l=>l!==m);else{pulse=id+"l";likes.push(k)}render();
+    await(m?sb.from("likes").delete().match(k):sb.from("likes").insert(k));return;
+  }
+  if(a==="tg"){openC[id]=!openC[id];pulse=openC[id]?id+"c":null;render();const i=app.querySelector(`[data-c="${id}"]`);if(openC[id]&&i)i.focus({preventScroll:true});return}
+  if(a==="send"){const i=app.querySelector(`[data-c="${id}"]`),tx=i.value.trim();if(!tx)return;drafts[id]="";const r={id:crypto.randomUUID(),post_id:id,user_id:me.id,text:tx,created_at:new Date().toISOString()};coms.push(r);render();await sb.from("comments").insert(r);return}
+  if(a==="del"){if(!confirm("Удалить пост?"))return;const p=posts.find(x=>x.id===id);posts=posts.filter(x=>x!==p);render();await sb.from("posts").delete().eq("id",id);const ps=(p.images||[]).map(u=>decodeURIComponent(u.split("/photos/")[1]));if(ps.length)sb.storage.from("photos").remove(ps);return}
+  if(a==="savebio"){const b=$("#bio").value.trim();await sb.from("profiles").update({bio:b}).eq("id",me.id);P[me.id].bio=b;bioD=null;t.textContent="Сохранено ✓";return}
+  if(a==="pub"){
+    if(!pend.length)return alert("Сначала выбери фото");
+    t.disabled=true;t.textContent="Публикуем…";
+    const urls=[];for(const x of pend)urls.push(await up(x.b));
+    const {error}=await sb.from("posts").insert({user_id:me.id,caption:$("#cap").value.trim(),images:urls});
+    if(error)throw error;
+    pend=[];capD="";await load();tab="me";viewU=null;render();return;
+  }
+  }catch(x){alert("Не получилось: "+(x.message||x));render()}
+});
+app.addEventListener("change",async e=>{
+  try{
+  if(e.target.id==="file"){const fs=[...e.target.files].slice(0,10-pend.length);for(const f of fs){const b=await rs(f,1280);pend.push({b,u:URL.createObjectURL(b)})}e.target.value="";render()}
+  if(e.target.id==="avf"){const f=e.target.files[0];if(f){const u=await up(await rs(f,640));await sb.from("profiles").update({ava:u}).eq("id",me.id);P[me.id].ava=u;render()}}
+  }catch(x){alert("Не получилось: "+(x.message||x))}
+});
+app.addEventListener("input",e=>{if(e.target.id==="q"){q=e.target.value;render()}});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;viewU=null;render();scrollTo(0,0)});
+
+(async()=>{
+  try{
+    const {data}=await sb.auth.getSession();me=data.session?data.session.user:null;
+    if(me)await load();else render();
+  }catch(e){app.innerHTML='<div class="note">Не удаётся подключиться. Проверь интернет.</div>'}
+  hide();
+  sb.auth.onAuthStateChange((ev,s)=>{const u=s?s.user:null;if((u&&u.id)!==(me&&me.id)){me=u;if(me){tab="feed";load()}else render()}});
+  setInterval(()=>{const ae=document.activeElement;if(me&&!document.hidden&&!(ae&&/INPUT|TEXTAREA/.test(ae.tagName)))load()},20000);
+})();
+</script>
+</body>
+</html>
