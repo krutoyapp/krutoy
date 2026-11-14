@@ -32,7 +32,7 @@ button.out{background:none;color:var(--tx);border:1px solid var(--bd)}
 .note{text-align:center;color:var(--mut);padding:30px 10px}
 .av{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;object-fit:cover}
 .av.s{width:38px;height:38px;font-size:16px}
-.stats{display:flex;gap:24px;margin-top:6px}.stats b{display:block;font-size:18px}
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}.stats b{display:block;font-size:18px}
 .thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
 .th{position:relative;aspect-ratio:1}.th img{width:100%;height:100%;object-fit:cover;border-radius:10px}
 .th b{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -42,6 +42,12 @@ button.out{background:none;color:var(--tx);border:1px solid var(--bd)}
 .lb{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;animation:fade .2s}
 .lb img{max-width:92vw;max-height:86vh;border-radius:18px;animation:zin .25s ease-out}
 @keyframes fade{from{opacity:0}}@keyframes zin{from{transform:scale(.6);opacity:0}}
+.ed{position:fixed;inset:0;z-index:30;background:#000;display:flex;flex-direction:column}
+.edt{display:flex;gap:6px;align-items:center;padding:8px;padding-top:calc(8px + env(safe-area-inset-top,0px));background:#111;color:#fff;flex-wrap:wrap}
+.edt .ghost{color:#fff;font-size:20px}.edt .ghost.on{color:var(--ac2)}
+.edc{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:8px}
+.edc canvas{max-width:100%;max-height:100%;touch-action:none;border-radius:8px}
+.th .pen{position:absolute;bottom:2px;left:2px;font-size:14px;font-style:normal;pointer-events:none}
 nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:none;background:var(--card);border-top:1px solid var(--bd);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
 nav button{flex:1;background:none;color:var(--mut);font-size:11px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
 nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--ac)}
@@ -75,7 +81,7 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--ac)}
 const sb=supabase.createClient("https://mwryechyvhztkehifbmp.supabase.co","sb_publishable_nZQDoTQ7fzBeMH7an7JFEg_7GLItpHs");
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let me=null,P={},posts=[],likes=[],coms=[],tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
+let me=null,P={},posts=[],likes=[],coms=[],fol=[],tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
 const nick=id=>(P[id]&&P[id].nick)||"Аноним",name=id=>esc(nick(id));
 const ago=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 const t0=Date.now();
@@ -84,12 +90,34 @@ setTimeout(hide,6000);
 function zoom(src){const d=document.createElement("div");d.className="lb";d.innerHTML='<img alt="">';d.firstChild.src=src;d.onclick=()=>d.remove();document.body.appendChild(d)}
 const av=(id,s)=>{const p=P[id]||{},c="av"+(s?" s":"");return p.ava?`<img class="${c}" src="${p.ava}" alt="" data-a="zoom" data-src="${p.ava}" style="cursor:zoom-in">`:`<div class="${c}">${esc(nick(id).charAt(0).toUpperCase())}</div>`};
 function rs(file,mx){return new Promise((ok,no)=>{const im=new Image();im.onerror=no;im.onload=()=>{const k=Math.min(1,mx/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);c.toBlob(ok,"image/jpeg",.82)};im.src=URL.createObjectURL(file)})}
+function edit(i){
+  const x=pend[i],im=new Image();
+  im.onload=()=>{
+    const W=im.naturalWidth,H=im.naturalHeight,d=document.createElement("div");d.className="ed";
+    d.innerHTML=`<div class="edt"><button class="ghost" id="ex">✕</button><button class="ghost" id="eu">↩</button><button class="ghost on" id="ep">✏️</button><button class="ghost" id="et">Aa</button><input type="color" id="ec" value="#ff3b8d"><input type="range" id="es" min="2" max="30" value="6" style="width:90px"><button id="ek" style="margin-left:auto">Готово</button></div><div class="edc"><canvas id="cv" width="${W}" height="${H}"></canvas></div>`;
+    document.body.appendChild(d);
+    const cv=d.querySelector("#cv"),g=cv.getContext("2d"),ops=[],$$=s=>d.querySelector(s);let mode="p",cur=null;
+    const sz=()=>+$$("#es").value*W/400;
+    const draw=()=>{g.drawImage(im,0,0,W,H);for(const o of ops){if(o.k==="l"){g.lineCap=g.lineJoin="round";g.strokeStyle=o.c;g.lineWidth=o.s;g.beginPath();g.moveTo(o.p[0][0],o.p[0][1]);for(const p of o.p)g.lineTo(p[0],p[1]);g.stroke()}else{g.font=`bold ${o.s*3}px system-ui,sans-serif`;g.textAlign="center";g.lineWidth=o.s*.6;g.strokeStyle="rgba(0,0,0,.6)";g.strokeText(o.t,o.x,o.y);g.fillStyle=o.c;g.fillText(o.t,o.x,o.y)}}};
+    const pos=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]};
+    draw();
+    cv.onpointerdown=e=>{const p=pos(e);if(mode==="t"){const t=prompt("Текст");if(t){ops.push({k:"t",t,c:$$("#ec").value,s:sz(),x:p[0],y:p[1]});draw()}return}cur={k:"l",c:$$("#ec").value,s:sz(),p:[p]};ops.push(cur);cv.setPointerCapture(e.pointerId);draw()};
+    cv.onpointermove=e=>{if(cur){cur.p.push(pos(e));draw()}};
+    cv.onpointerup=cv.onpointercancel=()=>{cur=null};
+    $$("#ep").onclick=()=>{mode="p";$$("#ep").classList.add("on");$$("#et").classList.remove("on")};
+    $$("#et").onclick=()=>{mode="t";$$("#et").classList.add("on");$$("#ep").classList.remove("on")};
+    $$("#eu").onclick=()=>{ops.pop();draw()};
+    $$("#ex").onclick=()=>d.remove();
+    $$("#ek").onclick=()=>cv.toBlob(b=>{URL.revokeObjectURL(x.u);pend[i]={b,u:URL.createObjectURL(b)};d.remove();render()},"image/jpeg",.85);
+  };
+  im.src=x.u;
+}
 async function up(b){const path=me.id+"/"+crypto.randomUUID()+".jpg",{error}=await sb.storage.from("photos").upload(path,b,{contentType:"image/jpeg"});if(error)throw error;return sb.storage.from("photos").getPublicUrl(path).data.publicUrl}
 const ru=m=>/Invalid login/i.test(m)?"Неверная почта или пароль":/already/i.test(m)?"Эта почта уже зарегистрирована":/Database error/i.test(m)?"Этот ник уже занят":/Password/i.test(m)?"Пароль слишком короткий (от 6 символов)":m;
 
 async function load(){
-  const [a,b,c,d]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at")]);
-  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];render();
+  const [a,b,c,d,f]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at"),sb.from("follows").select("*")]);
+  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];fol=f.data||[];render();
 }
 const score=p=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filter(x=>x.post_id===p.id).length;return(l+c*2+1)/Math.pow((Date.now()-new Date(p.created_at))/864e5+1,.7)};
 
@@ -128,12 +156,12 @@ function render(){
       if(ps.length)h+='<h4 class="mut">Посты</h4>'+ps.map(card).join("");
       if(!pp.length&&!ps.length)h+='<div class="note">Ничего не найдено</div>'}
   }else if(tab==="add"){
-    h=`<div class="card pad"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*" multiple hidden><button class="out" data-a="pick" ${pend.length>=10?"disabled":""}>${pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Выбрать фото (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`<div class="th"><img src="${x.u}" alt=""><b data-a="rm" data-id="${i}">✕</b></div>`).join("")}</div><input type="text" id="cap" maxlength="200" placeholder="Подпись" style="margin-top:10px" value="${esc(capD)}"><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
+    h=`<div class="card pad"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*" multiple hidden><button class="out" data-a="pick" ${pend.length>=10?"disabled":""}>${pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Выбрать фото (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`<div class="th"><img src="${x.u}" alt="" data-a="edit" data-id="${i}"><b data-a="rm" data-id="${i}">✕</b><i class="pen">✏️</i></div>`).join("")}</div>${pend.length?'<div class="mut" style="margin-top:6px">Нажми на фото, чтобы нарисовать или добавить текст ✏️</div>':""}<input type="text" id="cap" maxlength="200" placeholder="Подпись" style="margin-top:10px" value="${esc(capD)}"><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
   }else{
     const pu=viewU||me.id,pr=P[pu]||{},own=pu===me.id,mp=posts.filter(p=>p.user_id===pu),lk=likes.filter(l=>mp.some(p=>p.id===l.post_id)).length;
-    h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div></div></div></div>`;
-    if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="150" placeholder="Расскажи о себе">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div>`;
-    else h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p>`;
+    h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div><b>${fol.filter(f=>f.following_id===pu).length}</b><span class="mut">подписчиков</span></div><div><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div></div></div></div>`;
+    if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="300" placeholder="Расскажи о себе (до 300 символов)" style="height:110px">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><div class="mut" id="bioc" style="text-align:right">${(bioD!==null?bioD:(pr.bio||"")).length}/300</div><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div>`;
+    else{const isF=fol.some(f=>f.follower_id===me.id&&f.following_id===pu);h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p><button data-a="follow" data-id="${pu}" class="${isF?"out":""}">${isF?"Вы подписаны ✓":"Подписаться"}</button>`}
     h+="</div>"+(mp.length?mp.map(card).join(""):'<div class="note">Постов пока нет</div>');
   }
   app.innerHTML=h;
@@ -157,6 +185,8 @@ app.addEventListener("click",async e=>{
     if(reg&&!r.data.session){err="Проверь почту и подтверди её, потом войди";mode="in";return authUI()}
     err="";return;
   }
+  if(a==="follow"){const m=fol.find(f=>f.follower_id===me.id&&f.following_id===id),k={follower_id:me.id,following_id:id};if(m)fol=fol.filter(f=>f!==m);else fol.push(k);render();await(m?sb.from("follows").delete().match(k):sb.from("follows").insert(k));return}
+  if(a==="edit")return edit(+id);
   if(a==="logout"){await sb.auth.signOut();return}
   if(a==="user"){tab="me";viewU=id===me.id?null:id;render();return scrollTo(0,0)}
   if(a==="back"){viewU=null;return render()}
@@ -188,7 +218,7 @@ app.addEventListener("change",async e=>{
   if(e.target.id==="avf"){const f=e.target.files[0];if(f){const u=await up(await rs(f,640));await sb.from("profiles").update({ava:u}).eq("id",me.id);P[me.id].ava=u;render()}}
   }catch(x){alert("Не получилось: "+(x.message||x))}
 });
-app.addEventListener("input",e=>{if(e.target.id==="q"){q=e.target.value;render()}});
+app.addEventListener("input",e=>{if(e.target.id==="q"){q=e.target.value;render()}if(e.target.id==="bio")$("#bioc").textContent=e.target.value.length+"/300"});
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;viewU=null;render();scrollTo(0,0)});
 
 (async()=>{
