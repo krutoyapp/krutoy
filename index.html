@@ -91,6 +91,8 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 .cin{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;gap:8px;justify-content:center;background:var(--bg);border-top:2px solid var(--bd);padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))}.cin input{max-width:480px}
 .vf{width:16px;height:16px;vertical-align:-3px;margin-left:4px}
 #toast{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:12px;right:12px;max-width:536px;margin:0 auto;z-index:40;background:var(--card);border:2px solid var(--bd);border-radius:16px;box-shadow:4px 4px 0 var(--bd);padding:12px 14px;font-weight:700;cursor:pointer;animation:slide .25s ease-out}
+.rd{color:#1d9bf0;font-weight:700}
+.chd{position:sticky;top:var(--hh,58px);z-index:3}
 </style>
 </head>
 <body>
@@ -207,12 +209,18 @@ async function pushOff(){try{const reg=await navigator.serviceWorker.getRegistra
 function refreshPush(){if(notifOn()&&"serviceWorker" in navigator&&"PushManager" in window&&typeof Notification!=="undefined"&&Notification.permission==="granted")pushOn()}
 function go(h){const m=/^(chat|user)=(.+)$/.exec((h||"").replace(/^#/,""));if(!m||!me)return;history.replaceState(null,"",location.pathname);if(m[1]==="chat"){tab="chat";chatU=m[2];viewU=null;markRead(m[2])}else{tab="me";viewU=m[2]===me.id?null:m[2];render()}}
 if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("message",e=>{if(e.data&&e.data.go)go(e.data.go)});
+function showList(title,ids){
+  const d=document.createElement("div");d.className="lb";d.style.alignItems="flex-end";
+  d.innerHTML=`<div class="card" style="width:min(560px,100%);max-height:75vh;overflow:auto;margin:0;border-radius:18px 18px 0 0"><div class="pad row hd"><b style="flex:1">${title} · ${ids.length}</b><button class="ghost" id="lx">✕</button></div>${ids.length?ids.map(i=>`<div class="pad row" data-u="${i}" style="cursor:pointer">${av(i,1)}<div class="who">${name(i)}</div></div>`).join(""):'<div class="note">Пока никого</div>'}</div>`;
+  d.onclick=e=>{const u=e.target.closest("[data-u]");if(u){d.remove();tab="me";viewU=u.dataset.u===me.id?null:u.dataset.u;render();scrollTo(0,0);return}if(e.target.id==="lx"||e.target===d)d.remove()};
+  document.body.appendChild(d);
+}
 const last=a=>a[a.length-1];
 const unread=()=>msgs.filter(m=>m.recipient_id===me.id&&!m.read_at).length;
 function chatHTML(){
   if(chatU){
     const th=msgs.filter(m=>(m.sender_id===me.id&&m.recipient_id===chatU)||(m.sender_id===chatU&&m.recipient_id===me.id));
-    return `<div class="card hd row pad" style="margin-bottom:10px"><button class="ghost" data-a="cback">←</button>${av(chatU,1)}<div class="who" data-a="user" data-id="${chatU}">${name(chatU)}</div></div><div class="thread">${th.length?th.map(m=>`<div class="msg ${m.sender_id===me.id?"me":""}"><div class="mb">${esc(m.text)}</div><div class="mut mt">${ago(m.created_at)}</div></div>`).join(""):'<div class="note">Напиши первое сообщение 👋</div>'}</div><div class="cin"><input type="text" id="mi" maxlength="1000" placeholder="Сообщение…" value="${esc(chatD)}"><button data-a="msend">→</button></div>`;
+    return `<div class="card hd row pad chd" style="margin-bottom:10px"><button class="ghost" data-a="cback">←</button>${av(chatU,1)}<div class="who" data-a="user" data-id="${chatU}">${name(chatU)}</div></div><div class="thread">${th.length?th.map(m=>`<div class="msg ${m.sender_id===me.id?"me":""}"><div class="mb">${esc(m.text)}</div><div class="mut mt">${ago(m.created_at)}${m.sender_id===me.id?` <span class="${m.read_at?"rd":""}">${m.read_at?"✓✓":"✓"}</span>`:""}</div></div>`).join(""):'<div class="note">Напиши первое сообщение 👋</div>'}</div><div class="cin"><input type="text" id="mi" maxlength="1000" placeholder="Сообщение…" value="${esc(chatD)}"><button data-a="msend">→</button></div>`;
   }
   const by={};for(const m of msgs){const o=m.sender_id===me.id?m.recipient_id:m.sender_id;(by[o]=by[o]||[]).push(m)}
   const ids=Object.keys(by).sort((a,b)=>new Date(last(by[b]).created_at)-new Date(last(by[a]).created_at));
@@ -221,7 +229,7 @@ function chatHTML(){
 }
 function sub(){
   if(ch){sb.removeChannel(ch);ch=null}if(!me)return;
-  ch=sb.channel("dm-"+me.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:"recipient_id=eq."+me.id},pl=>{const m=pl.new;if(msgs.some(x=>x.id===m.id))return;if(!(tab==="chat"&&chatU===m.sender_id&&!document.hidden))note("💬 "+nick(m.sender_id),m.text,()=>{tab="chat";chatU=m.sender_id;viewU=null;markRead(m.sender_id)});msgs.push(m);if(tab==="chat"&&chatU===m.sender_id)markRead(m.sender_id);else render()}).on("postgres_changes",{event:"INSERT",schema:"public",table:"posts"},pl=>{const p=pl.new;if(!p||p.user_id===me.id)return;if(fol.some(f=>f.follower_id===me.id&&f.following_id===p.user_id)){note("🆕 "+nick(p.user_id),"опубликовал(а) новый пост",()=>{tab="me";viewU=p.user_id;render()})}if(!posts.some(x=>x.id===p.id)){posts.unshift(p);render()}}).subscribe();
+  ch=sb.channel("dm-"+me.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:"recipient_id=eq."+me.id},pl=>{const m=pl.new;if(msgs.some(x=>x.id===m.id))return;if(!(tab==="chat"&&chatU===m.sender_id&&!document.hidden))note("💬 "+nick(m.sender_id),m.text,()=>{tab="chat";chatU=m.sender_id;viewU=null;markRead(m.sender_id)});msgs.push(m);if(tab==="chat"&&chatU===m.sender_id&&!document.hidden){markRead(m.sender_id);scrollTo(0,document.body.scrollHeight)}else render()}).on("postgres_changes",{event:"INSERT",schema:"public",table:"posts"},pl=>{const p=pl.new;if(!p||p.user_id===me.id)return;if(fol.some(f=>f.follower_id===me.id&&f.following_id===p.user_id)){note("🆕 "+nick(p.user_id),"опубликовал(а) новый пост",()=>{tab="me";viewU=p.user_id;render()})}if(!posts.some(x=>x.id===p.id)){posts.unshift(p);render()}}).on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:"sender_id=eq."+me.id},pl=>{const m=msgs.find(x=>x.id===pl.new.id);if(m&&pl.new.read_at){m.read_at=pl.new.read_at;render()}}).subscribe();
 }
 function markRead(o){let c=false;msgs.forEach(m=>{if(m.sender_id===o&&m.recipient_id===me.id&&!m.read_at){m.read_at=new Date().toISOString();c=true}});if(c)sb.rpc("mark_read",{other:o});render()}
 const score=(p,t)=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filter(x=>x.post_id===p.id).length;return(l+c*2+1)/Math.pow((Date.now()-new Date(t||p.created_at))/864e5+1,.7)};
@@ -265,7 +273,7 @@ function render(){
     h=`<div class="card pad big"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*" multiple hidden><button class="pickz" data-a="pick" ${pend.length>=10?"disabled":""}>${pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Выбрать фото (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`<div class="th"><img src="${x.u}" alt="" data-a="edit" data-id="${i}"><b data-a="rm" data-id="${i}">✕</b><i class="pen">✏️</i></div>`).join("")}</div>${pend.length?'<div class="mut" style="margin-top:6px">Нажми на фото, чтобы нарисовать или добавить текст ✏️</div>':""}<textarea id="cap" maxlength="500" placeholder="Что расскажешь про эти фото?" style="margin-top:12px;height:140px">${esc(capD)}</textarea><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
   }else{
     const pu=viewU||me.id,pr=P[pu]||{},own=pu===me.id,mp=posts.filter(p=>p.user_id===pu),lk=likes.filter(l=>mp.some(p=>p.id===l.post_id)).length;
-    h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad prof"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div><b>${FC[pu]||0}</b><span class="mut">подписчиков</span></div>${own?`<div><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div>`:""}</div></div></div>`;
+    h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad prof"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div ${own?'data-a="flist" data-id="in" style="cursor:pointer"':""}><b>${FC[pu]||0}</b><span class="mut">подписчиков</span></div>${own?`<div data-a="flist" data-id="out" style="cursor:pointer"><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div>`:""}</div></div></div>`;
     if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="300" placeholder="Расскажи о себе (до 300 символов)" style="height:170px">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><div class="mut" id="bioc" style="text-align:right">${(bioD!==null?bioD:(pr.bio||"")).length}/300</div><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div><div style="margin-top:12px"><button class="out" data-a="notif">${notifOn()?"🔔 Уведомления: вкл":"🔕 Включить уведомления"}</button></div>`;
     else{const isF=fol.some(f=>f.follower_id===me.id&&f.following_id===pu);h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p><button data-a="follow" data-id="${pu}" class="${isF?"out":""}">${isF?"Вы подписаны ✓":"Подписаться"}</button><button data-a="write" data-id="${pu}" class="out" style="margin-left:8px">💬 Написать</button>`}
     h+="</div>"+(()=>{const canR=own||fol.some(f=>f.follower_id===me.id&&f.following_id===pu),it=[...mp.map(p=>({p,by:null,t:p.created_at})),...(canR?rep.filter(r=>r.user_id===pu).map(r=>({p:posts.find(x=>x.id===r.post_id),by:pu,t:r.created_at})).filter(x=>x.p):[])].sort((a,b)=>new Date(b.t)-new Date(a.t));return it.length?it.map(x=>card(x.p,x.by)).join(""):'<div class="note">Постов пока нет</div>'})();
@@ -307,6 +315,7 @@ app.addEventListener("click",async e=>{
     sset("kr_notif","1");
     if(typeof Notification!=="undefined"&&Notification.permission==="default"){try{await Notification.requestPermission()}catch(e){}}
     const r=await pushOn();render();if(r)alert(r);return}
+  if(a==="flist"){const ids=id==="in"?fol.filter(f=>f.following_id===me.id).map(f=>f.follower_id):fol.filter(f=>f.follower_id===me.id).map(f=>f.following_id);showList(id==="in"?"Подписчики":"Подписки",ids);return}
   if(a==="chat"||a==="write"){tab="chat";chatU=id;viewU=null;chatD="";markRead(id);return scrollTo(0,document.body.scrollHeight)}
   if(a==="cback"){chatU=null;return render()}
   if(a==="msend"){const i=$("#mi"),tx=i.value.trim();if(!tx)return;i.value="";chatD="";const m={id:crypto.randomUUID(),sender_id:me.id,recipient_id:chatU,text:tx,created_at:new Date().toISOString(),read_at:null};msgs.push(m);render();scrollTo(0,document.body.scrollHeight);const {error}=await sb.from("messages").insert(m);if(error){msgs=msgs.filter(x=>x!==m);render();alert("Не отправилось: "+error.message)}return}
@@ -344,6 +353,8 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.
 
 (async()=>{
   try{
+    document.documentElement.style.setProperty("--hh",($("header").offsetHeight||58)+"px");
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden&&me&&tab==="chat"&&chatU)markRead(chatU)});
     const {data}=await sb.auth.getSession();me=data.session?data.session.user:null;
     if(me){await load();sub();refreshPush();go(location.hash)}else render();
   }catch(e){app.innerHTML='<div class="note">Не удаётся подключиться. Проверь интернет.</div>'}
