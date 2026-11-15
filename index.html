@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>krutoy</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="krutoy">
+<meta name="theme-color" content="#14a15f">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#e9f6ea;--card:#fffef9;--tx:#0d1f15;--mut:#547563;--ac:#14a15f;--ac2:#7bf0ac;--bd:#10281b;--inp:#e4f2e6;--btn:#06240f;--grad:linear-gradient(90deg,var(--ac),var(--ac2))}
@@ -183,6 +189,24 @@ function note(title,body,fn){
   t.onclick=()=>{t.remove();if(fn)fn()};document.body.appendChild(t);setTimeout(()=>t.remove(),5000);
   if(document.hidden&&typeof Notification!=="undefined"&&Notification.permission==="granted"){try{new Notification(title,{body:body||""})}catch(e){}}
 }
+const VAPID="BKC1ksVXG3S1XRPJ_D0FuN252s6wX4VFFadGn97ubXE4hPu1lZYFUgtErifsiMDX549SCsBZDNihoatP-0V9LmQ";
+const b64=s=>{const p="=".repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)))};
+async function pushOn(){
+  if(!("serviceWorker" in navigator)||!("PushManager" in window))return "Пуш-уведомления тут недоступны. На iPad: нажми «Поделиться» → «На экран Домой», открой сайт с иконки и включи уведомления там.";
+  if(Notification.permission!=="granted")return "Разрешение на уведомления не выдано. Проверь настройки браузера.";
+  try{
+    const reg=await navigator.serviceWorker.register("sw.js");await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(VAPID)});
+    const j=sub.toJSON(),{error}=await sb.rpc("save_push",{e:j.endpoint,p:j.keys.p256dh,a:j.keys.auth});
+    if(error)return "Не удалось сохранить: "+error.message;
+  }catch(e){return "Ошибка: "+(e.message||e)}
+  return "";
+}
+async function pushOff(){try{const reg=await navigator.serviceWorker.getRegistration(),sub=reg&&await reg.pushManager.getSubscription();if(sub){await sb.from("push_subs").delete().eq("endpoint",sub.endpoint);await sub.unsubscribe()}}catch(e){}}
+function refreshPush(){if(notifOn()&&"serviceWorker" in navigator&&"PushManager" in window&&typeof Notification!=="undefined"&&Notification.permission==="granted")pushOn()}
+function go(h){const m=/^(chat|user)=(.+)$/.exec((h||"").replace(/^#/,""));if(!m||!me)return;history.replaceState(null,"",location.pathname);if(m[1]==="chat"){tab="chat";chatU=m[2];viewU=null;markRead(m[2])}else{tab="me";viewU=m[2]===me.id?null:m[2];render()}}
+if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("message",e=>{if(e.data&&e.data.go)go(e.data.go)});
 const last=a=>a[a.length-1];
 const unread=()=>msgs.filter(m=>m.recipient_id===me.id&&!m.read_at).length;
 function chatHTML(){
@@ -278,7 +302,11 @@ app.addEventListener("click",async e=>{
   if(a==="pedit"){const p=posts.find(x=>x.id===id);if(!p||p.user_id!==me.id)return;editP=id;editD=p.caption||"";return render()}
   if(a==="pcancel"){editP=null;return render()}
   if(a==="psave"){const p=posts.find(x=>x.id===id),v=$("#ec").value.trim();if(!p||p.user_id!==me.id)return;p.caption=v;editP=null;render();const {error}=await sb.from("posts").update({caption:v}).eq("id",id);if(error)alert("Не получилось сохранить: "+error.message);return}
-  if(a==="notif"){if(notifOn()){sset("kr_notif","0")}else{sset("kr_notif","1");if(typeof Notification!=="undefined"&&Notification.permission==="default"){try{await Notification.requestPermission()}catch(e){}}}return render()}
+  if(a==="notif"){
+    if(notifOn()){sset("kr_notif","0");await pushOff();return render()}
+    sset("kr_notif","1");
+    if(typeof Notification!=="undefined"&&Notification.permission==="default"){try{await Notification.requestPermission()}catch(e){}}
+    const r=await pushOn();render();if(r)alert(r);return}
   if(a==="chat"||a==="write"){tab="chat";chatU=id;viewU=null;chatD="";markRead(id);return scrollTo(0,document.body.scrollHeight)}
   if(a==="cback"){chatU=null;return render()}
   if(a==="msend"){const i=$("#mi"),tx=i.value.trim();if(!tx)return;i.value="";chatD="";const m={id:crypto.randomUUID(),sender_id:me.id,recipient_id:chatU,text:tx,created_at:new Date().toISOString(),read_at:null};msgs.push(m);render();scrollTo(0,document.body.scrollHeight);const {error}=await sb.from("messages").insert(m);if(error){msgs=msgs.filter(x=>x!==m);render();alert("Не отправилось: "+error.message)}return}
@@ -317,10 +345,10 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.
 (async()=>{
   try{
     const {data}=await sb.auth.getSession();me=data.session?data.session.user:null;
-    if(me){await load();sub()}else render();
+    if(me){await load();sub();refreshPush();go(location.hash)}else render();
   }catch(e){app.innerHTML='<div class="note">Не удаётся подключиться. Проверь интернет.</div>'}
   hide();
-  sb.auth.onAuthStateChange((ev,s)=>{const u=s?s.user:null;if((u&&u.id)!==(me&&me.id)){me=u;if(me){tab="feed";load();sub()}else{msgs=[];chatU=null;sub();render()}}});
+  sb.auth.onAuthStateChange((ev,s)=>{const u=s?s.user:null;if((u&&u.id)!==(me&&me.id)){me=u;if(me){tab="feed";load();sub();refreshPush()}else{msgs=[];chatU=null;sub();render()}}});
   setInterval(()=>{const ae=document.activeElement;if(me&&!document.hidden&&!(ae&&/INPUT|TEXTAREA/.test(ae.tagName)))load()},20000);
 })();
 </script>
