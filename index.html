@@ -93,6 +93,12 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 #toast{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:12px;right:12px;max-width:536px;margin:0 auto;z-index:40;background:var(--card);border:2px solid var(--bd);border-radius:16px;box-shadow:4px 4px 0 var(--bd);padding:12px 14px;font-weight:700;cursor:pointer;animation:slide .25s ease-out}
 .rd{color:#1d9bf0;font-weight:700}
 .chd{position:sticky;top:var(--hh,58px);z-index:3}
+.vs{position:relative;flex:0 0 100%;scroll-snap-align:center}
+.vs video{width:100%;display:block;max-height:560px;object-fit:cover}
+.play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px;pointer-events:none}
+.th video{width:100%;height:100%;object-fit:cover;border-radius:12px;border:2px solid var(--bd)}
+.lb video{max-width:94vw;max-height:88vh;border-radius:14px}
+.lbx{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:16px;color:#fff;font-size:26px;cursor:pointer;z-index:2;background:rgba(0,0,0,.45);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
@@ -111,7 +117,7 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 const sb=supabase.createClient("https://mwryechyvhztkehifbmp.supabase.co","sb_publishable_nZQDoTQ7fzBeMH7an7JFEg_7GLItpHs");
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],FC={},msgs=[],chatU=null,chatD="",ch=null,ADM=new Set(),editP=null,editD="",tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
+let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],FC={},msgs=[],chatU=null,chatD="",ch=null,ADM=new Set(),editP=null,editD="",vprog=null,tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
 const nick=id=>(P[id]&&P[id].nick)||"Аноним",VF='<svg class="vf" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1d9bf0"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',name=id=>esc(nick(id))+(ADM.has(id)?VF:"");
 const ago=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 const heart=on=>`<svg class="hrt" viewBox="0 0 24 24" fill="${on?"#ff3b7f":"none"}" stroke="${on?"#ff3b7f":"currentColor"}" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2 0 3.6 1.1 5.3 3 1.7-1.9 3.3-3 5.3-3 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
@@ -150,7 +156,7 @@ if(!matchMedia("(prefers-reduced-motion:reduce)").matches)setTimeout(fallLoop,45
 const t0=Date.now();
 function hide(){const s=$("#splash");if(!s||s.dataset.h)return;s.dataset.h=1;setTimeout(()=>{s.classList.add("out");setTimeout(()=>s.remove(),600)},Math.max(0,2300-(Date.now()-t0)))}
 setTimeout(hide,6000);
-function zoom(src){const d=document.createElement("div");d.className="lb";d.innerHTML='<img alt="">';d.firstChild.src=src;d.onclick=()=>d.remove();document.body.appendChild(d)}
+function zoom(src){const d=document.createElement("div");d.className="lb";const v=/\.(mp4|webm|mov)$/i.test(src);d.innerHTML=(v?'<video controls autoplay playsinline loop></video>':'<img alt="">')+'<b class="lbx">✕</b>';d.firstChild.src=src;d.onclick=e=>{if(!v||e.target===d||e.target.classList.contains("lbx"))d.remove()};document.body.appendChild(d)}
 const av=(id,s)=>{const p=P[id]||{},c="av"+(s?" s":"");return p.ava?`<img class="${c}" src="${p.ava}" alt="" data-a="zoom" data-src="${p.ava}" style="cursor:zoom-in">`:`<div class="${c}">${esc(nick(id).charAt(0).toUpperCase())}</div>`};
 function rs(file,mx){return new Promise((ok,no)=>{const im=new Image();im.onerror=no;im.onload=()=>{const k=Math.min(1,mx/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);c.toBlob(ok,"image/jpeg",.82)};im.src=URL.createObjectURL(file)})}
 function edit(i){
@@ -175,7 +181,32 @@ function edit(i){
   };
   im.src=x.u;
 }
-async function up(b){const path=me.id+"/"+crypto.randomUUID()+".jpg",{error}=await sb.storage.from("photos").upload(path,b,{contentType:"image/jpeg"});if(error)throw error;return sb.storage.from("photos").getPublicUrl(path).data.publicUrl}
+async function squeezeVideo(file,onp){
+  const url=URL.createObjectURL(file),v=document.createElement("video");
+  v.src=url;v.playsInline=true;v.preload="auto";
+  await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=()=>no(new Error("не удалось прочитать файл"))});
+  const dur=Math.min(v.duration||30,30),k=Math.min(1,480/Math.max(v.videoWidth,v.videoHeight)),W=Math.max(2,Math.round(v.videoWidth*k/2)*2),H=Math.max(2,Math.round(v.videoHeight*k/2)*2);
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d"),out=cv.captureStream(24);
+  let ctx=null;
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(AC){ctx=new AC();await ctx.resume();
+      if(ctx.state==="running"){const src=ctx.createMediaElementSource(v),dst=ctx.createMediaStreamDestination();src.connect(dst);out.addTrack(dst.stream.getAudioTracks()[0])}else v.muted=true}
+    else v.muted=true;
+  }catch(e){v.muted=true}
+  const types=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+  const mt=window.MediaRecorder&&types.find(t=>MediaRecorder.isTypeSupported(t));
+  if(!mt)throw new Error("этот браузер не умеет сжимать видео");
+  const rec=new MediaRecorder(out,{mimeType:mt,videoBitsPerSecond:600000,audioBitsPerSecond:64000}),chunks=[];
+  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+  const done=new Promise(ok=>rec.onstop=ok);
+  rec.start(500);
+  const draw=()=>{g.drawImage(v,0,0,W,H);if(onp)onp(Math.min(1,v.currentTime/dur));if(v.currentTime>=dur||v.ended){rec.stop();v.pause();return}requestAnimationFrame(draw)};
+  await v.play();draw();await done;
+  URL.revokeObjectURL(url);if(ctx)ctx.close();
+  return new Blob(chunks,{type:mt.split(";")[0]});
+}
+async function up(b){const path=me.id+"/"+crypto.randomUUID()+"."+(/mp4/.test(b.type)?"mp4":/webm/.test(b.type)?"webm":"jpg"),{error}=await sb.storage.from("photos").upload(path,b,{contentType:(b.type||"image/jpeg").split(";")[0]});if(error)throw error;return sb.storage.from("photos").getPublicUrl(path).data.publicUrl}
 const ru=m=>/Invalid login/i.test(m)?"Неверная почта или пароль":/already/i.test(m)?"Эта почта уже зарегистрирована":/Database error/i.test(m)?"Этот ник уже занят":/Password/i.test(m)?"Пароль слишком короткий (от 6 символов)":m;
 
 async function load(){
@@ -240,9 +271,11 @@ function sub(){
 function markRead(o){let c=false;msgs.forEach(m=>{if(m.sender_id===o&&m.recipient_id===me.id&&!m.read_at){m.read_at=new Date().toISOString();c=true}});if(c)sb.from("messages").update({read_at:new Date().toISOString()}).eq("sender_id",o).eq("recipient_id",me.id).is("read_at",null).then(r=>{if(r.error)console.error(r.error)});render()}
 const score=(p,t)=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filter(x=>x.post_id===p.id).length;return(l+c*2+1)/Math.pow((Date.now()-new Date(t||p.created_at))/864e5+1,.7)};
 
+const isV=u=>/\.(mp4|webm|mov)$/i.test(u);
+const sld=u=>isV(u)?`<div class="vs"><video class="ph" src="${u}#t=0.1" muted playsinline preload="metadata" data-a="zoom" data-src="${u}"></video><i class="play">▶</i></div>`:`<img class="ph" src="${u}" alt="" data-a="zoom" data-src="${u}" style="cursor:zoom-in">`;
 function card(p,by){
   const pl=likes.filter(l=>l.post_id===p.id),mine=pl.some(l=>l.user_id===me.id),pc=coms.filter(c=>c.post_id===p.id),im=p.images||[],rp=rep.filter(r=>r.post_id===p.id),mr=rp.some(r=>r.user_id===me.id);
-  const sl=im.length>1?`<div class="carw"><div class="car" data-car="${p.id}" data-n="${im.length}">${im.map(s=>`<img class="ph" src="${s}" alt="">`).join("")}</div><span class="badge" id="bd-${p.id}">${(carPos[p.id]||0)+1}/${im.length}</span></div>`:`<img class="ph" src="${im[0]||""}" alt="">`;
+  const sl=im.length>1?`<div class="carw"><div class="car" data-car="${p.id}" data-n="${im.length}">${im.map(sld).join("")}</div><span class="badge" id="bd-${p.id}">${(carPos[p.id]||0)+1}/${im.length}</span></div>`:sld(im[0]||"");
   let h=`<div class="card">${by?`<div class="ban">🔁 ${by===me.id?"Ты":name(by)} сделал(а) репост</div>`:""}<div class="pad row hd">${av(p.user_id,1)}<div style="flex:1"><div class="who" data-a="user" data-id="${p.user_id}">${name(p.user_id)}</div><div class="mut">${ago(p.created_at)}</div></div>${p.user_id===me.id?`<button class="ghost" data-a="pedit" data-id="${p.id}">✏️</button>`:""}${p.user_id===me.id||ADM.has(me.id)?`<button class="ghost" data-a="del" data-id="${p.id}">🗑</button>`:""}</div>${sl}<div class="pad"><div class="row acts"><button class="act lk ${mine?"on":""}" data-a="like" data-id="${p.id}"><span class="heart ${pulse===p.id+"l"?"pop":""}">${heart(mine)}</span> ${pl.length}</button><button class="act ${openC[p.id]?"on":""}" data-a="tg" data-id="${p.id}">💬 ${pc.length}</button>${p.user_id===me.id?"":`<button class="act ${mr?"on":""}" data-a="rep" data-id="${p.id}">🔁 ${rp.length}</button>`}</div>${editP===p.id?`<textarea id="ec" maxlength="500" style="margin-top:8px;height:110px">${esc(editD)}</textarea><div class="row" style="margin-top:6px"><button data-a="psave" data-id="${p.id}">Сохранить</button><button class="out" data-a="pcancel">Отмена</button></div>`:p.caption?`<div style="margin-top:8px">${esc(p.caption)}</div>`:""}</div>`;
   if(!openC[p.id])return h+"</div>";
   h+=`<div class="cmwrap ${pulse===p.id+"c"?"anim":""}">`;
@@ -277,7 +310,7 @@ function render(){
       if(ps.length)h+='<h4 class="mut">Посты</h4>'+ps.map(p=>card(p)).join("");
       if(!pp.length&&!ps.length)h+='<div class="note">Ничего не найдено</div>'}
   }else if(tab==="chat"){h=chatHTML()}else if(tab==="add"){
-    h=`<div class="card pad big"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*" multiple hidden><button class="pickz" data-a="pick" ${pend.length>=10?"disabled":""}>${pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Выбрать фото (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`<div class="th"><img src="${x.u}" alt="" data-a="edit" data-id="${i}"><b data-a="rm" data-id="${i}">✕</b><i class="pen">✏️</i></div>`).join("")}</div>${pend.length?'<div class="mut" style="margin-top:6px">Нажми на фото, чтобы нарисовать или добавить текст ✏️</div>':""}<textarea id="cap" maxlength="500" placeholder="Что расскажешь про эти фото?" style="margin-top:12px;height:140px">${esc(capD)}</textarea><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
+    h=`<div class="card pad big"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*,video/*" multiple hidden><button class="pickz" id="pick" data-a="pick" ${pend.length>=10||vprog!==null?"disabled":""}>${vprog!==null?`⏳ Сжимаем видео ${vprog}%`:pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Фото или видео (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`${x.v?`<div class="th"><video src="${x.u}#t=0.1" muted playsinline preload="metadata"></video><b data-a="rm" data-id="${i}">✕</b><i class="pen">🎬</i></div>`:`<div class="th"><img src="${x.u}" alt="" data-a="edit" data-id="${i}"><b data-a="rm" data-id="${i}">✕</b><i class="pen">✏️</i></div>`}`).join("")}</div>${pend.length?'<div class="mut" style="margin-top:6px">Нажми на фото, чтобы нарисовать или добавить текст ✏️</div>':""}<textarea id="cap" maxlength="500" placeholder="Что расскажешь про эти фото?" style="margin-top:12px;height:140px">${esc(capD)}</textarea><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
   }else{
     const pu=viewU||me.id,pr=P[pu]||{},own=pu===me.id,mp=posts.filter(p=>p.user_id===pu),lk=likes.filter(l=>mp.some(p=>p.id===l.post_id)).length;
     h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad prof"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div ${own?'data-a="flist" data-id="in" style="cursor:pointer"':""}><b>${FC[pu]||0}</b><span class="mut">подписчиков</span></div>${own?`<div data-a="flist" data-id="out" style="cursor:pointer"><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div>`:""}</div></div></div>`;
@@ -351,7 +384,17 @@ app.addEventListener("click",async e=>{
 });
 app.addEventListener("change",async e=>{
   try{
-  if(e.target.id==="file"){const fs=[...e.target.files].slice(0,10-pend.length);for(const f of fs){const b=await rs(f,1280);pend.push({b,u:URL.createObjectURL(b)})}e.target.value="";render()}
+  if(e.target.id==="file"){const fs=[...e.target.files].slice(0,10-pend.length);e.target.value="";
+    for(const f of fs){
+      if(f.type.startsWith("video/")){
+        if(pend.filter(x=>x.v).length>=2){alert("В одном посте не больше 2 видео");continue}
+        try{vprog=0;render();const b=await squeezeVideo(f,pc=>{vprog=Math.round(pc*100);const pk=$("#pick");if(pk)pk.textContent="⏳ Сжимаем видео "+vprog+"%"});
+          if(b.size>15e6)throw new Error("видео получилось слишком большим");pend.push({b,u:URL.createObjectURL(b),v:true})}
+        catch(x){alert("Видео не получилось: "+(x.message||x))}
+        vprog=null;
+      }else{const b=await rs(f,1280);pend.push({b,u:URL.createObjectURL(b)})}
+    }
+    render()}
   if(e.target.id==="avf"){const f=e.target.files[0];if(f){const u=await up(await rs(f,640));await sb.from("profiles").update({ava:u}).eq("id",me.id);P[me.id].ava=u;render()}}
   }catch(x){alert("Не получилось: "+(x.message||x))}
 });
