@@ -83,6 +83,7 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 .mb{display:inline-block;text-align:left;background:var(--card);border:2px solid var(--bd);border-radius:16px;padding:8px 12px;word-break:break-word}
 .msg.me .mb{background:var(--grad);color:var(--btn)}.mt{font-size:11px;margin-top:2px}
 .cin{position:sticky;bottom:calc(88px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;background:var(--bg);padding:8px 0}
+.vf{width:16px;height:16px;vertical-align:-3px;margin-left:4px}
 </style>
 </head>
 <body>
@@ -101,8 +102,8 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 const sb=supabase.createClient("https://mwryechyvhztkehifbmp.supabase.co","sb_publishable_nZQDoTQ7fzBeMH7an7JFEg_7GLItpHs");
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],FC={},msgs=[],chatU=null,chatD="",ch=null,tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
-const nick=id=>(P[id]&&P[id].nick)||"Аноним",name=id=>esc(nick(id));
+let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],FC={},msgs=[],chatU=null,chatD="",ch=null,ADM=new Set(),tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
+const nick=id=>(P[id]&&P[id].nick)||"Аноним",VF='<svg class="vf" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1d9bf0"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',name=id=>esc(nick(id))+(ADM.has(id)?VF:"");
 const ago=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 const heart=on=>`<svg class="hrt" viewBox="0 0 24 24" fill="${on?"#ff3b7f":"none"}" stroke="${on?"#ff3b7f":"currentColor"}" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2 0 3.6 1.1 5.3 3 1.7-1.9 3.3-3 5.3-3 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
 const COL=["#ff6b6b","#ffd166","#06d6a0","#4cc9f0","#a78bfa","#ff9f1c","#f72585","#80ed99"];
@@ -169,8 +170,8 @@ async function up(b){const path=me.id+"/"+crypto.randomUUID()+".jpg",{error}=awa
 const ru=m=>/Invalid login/i.test(m)?"Неверная почта или пароль":/already/i.test(m)?"Эта почта уже зарегистрирована":/Database error/i.test(m)?"Этот ник уже занят":/Password/i.test(m)?"Пароль слишком короткий (от 6 символов)":m;
 
 async function load(){
-  const [a,b,c,d,f,r,k,mm]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at"),sb.from("follows").select("*"),sb.from("reposts").select("*"),sb.rpc("follower_counts"),sb.from("messages").select("*").order("created_at",{ascending:false}).limit(500)]);
-  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];fol=f.data||[];rep=r.data||[];FC={};if(k.error)fol.forEach(x=>FC[x.following_id]=(FC[x.following_id]||0)+1);else(k.data||[]).forEach(x=>FC[x.user_id]=+x.n);msgs=(mm.data||[]).slice().reverse();render();
+  const [a,b,c,d,f,r,k,mm,ad]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at"),sb.from("follows").select("*"),sb.from("reposts").select("*"),sb.rpc("follower_counts"),sb.from("messages").select("*").order("created_at",{ascending:false}).limit(500),sb.from("admins").select("user_id")]);
+  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];fol=f.data||[];rep=r.data||[];FC={};if(k.error)fol.forEach(x=>FC[x.following_id]=(FC[x.following_id]||0)+1);else(k.data||[]).forEach(x=>FC[x.user_id]=+x.n);msgs=(mm.data||[]).slice().reverse();ADM=new Set((ad.data||[]).map(x=>x.user_id));render();
 }
 const last=a=>a[a.length-1];
 const unread=()=>msgs.filter(m=>m.recipient_id===me.id&&!m.read_at).length;
@@ -194,7 +195,7 @@ const score=(p,t)=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filt
 function card(p,by){
   const pl=likes.filter(l=>l.post_id===p.id),mine=pl.some(l=>l.user_id===me.id),pc=coms.filter(c=>c.post_id===p.id),im=p.images||[],rp=rep.filter(r=>r.post_id===p.id),mr=rp.some(r=>r.user_id===me.id);
   const sl=im.length>1?`<div class="carw"><div class="car" data-car="${p.id}" data-n="${im.length}">${im.map(s=>`<img class="ph" src="${s}" alt="">`).join("")}</div><span class="badge" id="bd-${p.id}">${(carPos[p.id]||0)+1}/${im.length}</span></div>`:`<img class="ph" src="${im[0]||""}" alt="">`;
-  let h=`<div class="card">${by?`<div class="ban">🔁 ${by===me.id?"Ты":name(by)} сделал(а) репост</div>`:""}<div class="pad row hd">${av(p.user_id,1)}<div style="flex:1"><div class="who" data-a="user" data-id="${p.user_id}">${name(p.user_id)}</div><div class="mut">${ago(p.created_at)}</div></div>${p.user_id===me.id?`<button class="ghost" data-a="del" data-id="${p.id}">🗑</button>`:""}</div>${sl}<div class="pad"><div class="row acts"><button class="act lk ${mine?"on":""}" data-a="like" data-id="${p.id}"><span class="heart ${pulse===p.id+"l"?"pop":""}">${heart(mine)}</span> ${pl.length}</button><button class="act ${openC[p.id]?"on":""}" data-a="tg" data-id="${p.id}">💬 ${pc.length}</button>${p.user_id===me.id?"":`<button class="act ${mr?"on":""}" data-a="rep" data-id="${p.id}">🔁 ${rp.length}</button>`}</div>${p.caption?`<div style="margin-top:8px">${esc(p.caption)}</div>`:""}</div>`;
+  let h=`<div class="card">${by?`<div class="ban">🔁 ${by===me.id?"Ты":name(by)} сделал(а) репост</div>`:""}<div class="pad row hd">${av(p.user_id,1)}<div style="flex:1"><div class="who" data-a="user" data-id="${p.user_id}">${name(p.user_id)}</div><div class="mut">${ago(p.created_at)}</div></div>${p.user_id===me.id||ADM.has(me.id)?`<button class="ghost" data-a="del" data-id="${p.id}">🗑</button>`:""}</div>${sl}<div class="pad"><div class="row acts"><button class="act lk ${mine?"on":""}" data-a="like" data-id="${p.id}"><span class="heart ${pulse===p.id+"l"?"pop":""}">${heart(mine)}</span> ${pl.length}</button><button class="act ${openC[p.id]?"on":""}" data-a="tg" data-id="${p.id}">💬 ${pc.length}</button>${p.user_id===me.id?"":`<button class="act ${mr?"on":""}" data-a="rep" data-id="${p.id}">🔁 ${rp.length}</button>`}</div>${p.caption?`<div style="margin-top:8px">${esc(p.caption)}</div>`:""}</div>`;
   if(!openC[p.id])return h+"</div>";
   h+=`<div class="cmwrap ${pulse===p.id+"c"?"anim":""}">`;
   if(!pc.length)h+='<div class="cm mut">Комментариев пока нет</div>';
@@ -265,7 +266,7 @@ app.addEventListener("click",async e=>{
   if(a==="back"){viewU=null;return render()}
   if(a==="chat"||a==="write"){tab="chat";chatU=id;viewU=null;chatD="";markRead(id);return scrollTo(0,document.body.scrollHeight)}
   if(a==="cback"){chatU=null;return render()}
-  if(a==="msend"){const i=$("#mi"),tx=i.value.trim();if(!tx)return;chatD="";const m={id:crypto.randomUUID(),sender_id:me.id,recipient_id:chatU,text:tx,created_at:new Date().toISOString(),read_at:null};msgs.push(m);render();scrollTo(0,document.body.scrollHeight);const {error}=await sb.from("messages").insert(m);if(error){msgs=msgs.filter(x=>x!==m);render();alert("Не отправилось: "+error.message)}return}
+  if(a==="msend"){const i=$("#mi"),tx=i.value.trim();if(!tx)return;i.value="";chatD="";const m={id:crypto.randomUUID(),sender_id:me.id,recipient_id:chatU,text:tx,created_at:new Date().toISOString(),read_at:null};msgs.push(m);render();scrollTo(0,document.body.scrollHeight);const {error}=await sb.from("messages").insert(m);if(error){msgs=msgs.filter(x=>x!==m);render();alert("Не отправилось: "+error.message)}return}
   if(a==="pick")return $("#file").click();
   if(a==="chg")return $("#avf").click();
   if(a==="rm"){pend.splice(+id,1);return render()}
@@ -275,7 +276,7 @@ app.addEventListener("click",async e=>{
     await(m?sb.from("likes").delete().match(k):sb.from("likes").insert(k));return;
   }
   if(a==="tg"){openC[id]=!openC[id];pulse=openC[id]?id+"c":null;render();const i=app.querySelector(`[data-c="${id}"]`);if(openC[id]&&i)i.focus({preventScroll:true});return}
-  if(a==="send"){const i=app.querySelector(`[data-c="${id}"]`),tx=i.value.trim();if(!tx)return;drafts[id]="";const r={id:crypto.randomUUID(),post_id:id,user_id:me.id,text:tx,created_at:new Date().toISOString()};coms.push(r);render();await sb.from("comments").insert(r);return}
+  if(a==="send"){const i=app.querySelector(`[data-c="${id}"]`),tx=i.value.trim();if(!tx)return;i.value="";drafts[id]="";const r={id:crypto.randomUUID(),post_id:id,user_id:me.id,text:tx,created_at:new Date().toISOString()};coms.push(r);render();await sb.from("comments").insert(r);return}
   if(a==="del"){if(!confirm("Удалить пост?"))return;const p=posts.find(x=>x.id===id);posts=posts.filter(x=>x!==p);render();await sb.from("posts").delete().eq("id",id);const ps=(p.images||[]).map(u=>decodeURIComponent(u.split("/photos/")[1]));if(ps.length)sb.storage.from("photos").remove(ps);return}
   if(a==="savebio"){const b=$("#bio").value.trim();await sb.from("profiles").update({bio:b}).eq("id",me.id);P[me.id].bio=b;bioD=null;t.textContent="Сохранено ✓";return}
   if(a==="pub"){
@@ -284,7 +285,7 @@ app.addEventListener("click",async e=>{
     const urls=[];for(const x of pend)urls.push(await up(x.b));
     const {error}=await sb.from("posts").insert({user_id:me.id,caption:$("#cap").value.trim(),images:urls});
     if(error)throw error;
-    pend=[];capD="";await load();tab="me";viewU=null;render();return;
+    pend=[];capD="";if($("#cap"))$("#cap").value="";await load();tab="me";viewU=null;render();return;
   }
   }catch(x){alert("Не получилось: "+(x.message||x));render()}
 });
