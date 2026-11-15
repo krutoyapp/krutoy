@@ -51,7 +51,7 @@ button.out{background:var(--card);color:var(--tx)}
 .edc{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:8px}
 .edc canvas{max-width:100%;max-height:100%;touch-action:none;border-radius:8px}
 nav{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-width:536px;margin:0 auto;z-index:6;display:none;background:var(--card);border:2px solid var(--bd);border-radius:22px;box-shadow:4px 4px 0 var(--bd);padding:6px}
-nav button{flex:1;background:none;border:0;box-shadow:none;color:var(--mut);font-size:11px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:14px}
+nav button{flex:1;background:none;border:0;box-shadow:none;color:var(--mut);font-size:10px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:14px}
 nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);background:var(--grad)}
 .splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:opacity .5s,transform .5s}
 .splash.out{opacity:0;transform:scale(1.15);pointer-events:none}
@@ -77,6 +77,12 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 .act.lk.on{background:#ffe3ee;color:#ff3b7f;border-color:#ff3b7f}
 @media (prefers-color-scheme:dark){.act.lk.on{background:#3a1626}}
 @media (prefers-color-scheme:dark){.logo,.sl span{color:#5be59a}}
+.dot{font-style:normal;font-size:10px;font-weight:700;background:#ff3b7f;color:#fff;border-radius:10px;padding:1px 6px;margin-left:2px;vertical-align:top}
+.thread{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.msg{max-width:82%;align-self:flex-start}.msg.me{align-self:flex-end;text-align:right}
+.mb{display:inline-block;text-align:left;background:var(--card);border:2px solid var(--bd);border-radius:16px;padding:8px 12px;word-break:break-word}
+.msg.me .mb{background:var(--grad);color:var(--btn)}.mt{font-size:11px;margin-top:2px}
+.cin{position:sticky;bottom:calc(88px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;background:var(--bg);padding:8px 0}
 </style>
 </head>
 <body>
@@ -88,13 +94,14 @@ nav button span{font-size:22px;line-height:1}nav button.cur{color:var(--btn);bac
 <button data-tab="feed"><span>🔥</span>Рекомендации</button>
 <button data-tab="search"><span>🔍</span>Поиск</button>
 <button data-tab="add"><span>➕</span>Опубликовать</button>
+<button data-tab="chat" id="chatbtn"><span>💬</span>Чаты</button>
 <button data-tab="me"><span>👤</span>Профиль</button>
 </nav>
 <script>
 const sb=supabase.createClient("https://mwryechyvhztkehifbmp.supabase.co","sb_publishable_nZQDoTQ7fzBeMH7an7JFEg_7GLItpHs");
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],FC={},tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
+let me=null,P={},posts=[],likes=[],coms=[],fol=[],rep=[],FC={},msgs=[],chatU=null,chatD="",ch=null,tab="feed",viewU=null,openC={},drafts={},carPos={},pend=[],q="",pulse=null,capD="",bioD=null,mode="in",err="",aEm="",aNick="";
 const nick=id=>(P[id]&&P[id].nick)||"Аноним",name=id=>esc(nick(id));
 const ago=t=>new Date(t).toLocaleString("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 const heart=on=>`<svg class="hrt" viewBox="0 0 24 24" fill="${on?"#ff3b7f":"none"}" stroke="${on?"#ff3b7f":"currentColor"}" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2 0 3.6 1.1 5.3 3 1.7-1.9 3.3-3 5.3-3 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
@@ -162,9 +169,26 @@ async function up(b){const path=me.id+"/"+crypto.randomUUID()+".jpg",{error}=awa
 const ru=m=>/Invalid login/i.test(m)?"Неверная почта или пароль":/already/i.test(m)?"Эта почта уже зарегистрирована":/Database error/i.test(m)?"Этот ник уже занят":/Password/i.test(m)?"Пароль слишком короткий (от 6 символов)":m;
 
 async function load(){
-  const [a,b,c,d,f,r,k]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at"),sb.from("follows").select("*"),sb.from("reposts").select("*"),sb.rpc("follower_counts")]);
-  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];fol=f.data||[];rep=r.data||[];FC={};if(k.error)fol.forEach(x=>FC[x.following_id]=(FC[x.following_id]||0)+1);else(k.data||[]).forEach(x=>FC[x.user_id]=+x.n);render();
+  const [a,b,c,d,f,r,k,mm]=await Promise.all([sb.from("profiles").select("*"),sb.from("posts").select("*").order("created_at",{ascending:false}).limit(100),sb.from("likes").select("*"),sb.from("comments").select("*").order("created_at"),sb.from("follows").select("*"),sb.from("reposts").select("*"),sb.rpc("follower_counts"),sb.from("messages").select("*").order("created_at",{ascending:false}).limit(500)]);
+  P={};(a.data||[]).forEach(x=>P[x.id]=x);posts=b.data||[];likes=c.data||[];coms=d.data||[];fol=f.data||[];rep=r.data||[];FC={};if(k.error)fol.forEach(x=>FC[x.following_id]=(FC[x.following_id]||0)+1);else(k.data||[]).forEach(x=>FC[x.user_id]=+x.n);msgs=(mm.data||[]).slice().reverse();render();
 }
+const last=a=>a[a.length-1];
+const unread=()=>msgs.filter(m=>m.recipient_id===me.id&&!m.read_at).length;
+function chatHTML(){
+  if(chatU){
+    const th=msgs.filter(m=>(m.sender_id===me.id&&m.recipient_id===chatU)||(m.sender_id===chatU&&m.recipient_id===me.id));
+    return `<div class="card hd row pad" style="margin-bottom:10px"><button class="ghost" data-a="cback">←</button>${av(chatU,1)}<div class="who" data-a="user" data-id="${chatU}">${name(chatU)}</div></div><div class="thread">${th.length?th.map(m=>`<div class="msg ${m.sender_id===me.id?"me":""}"><div class="mb">${esc(m.text)}</div><div class="mut mt">${ago(m.created_at)}</div></div>`).join(""):'<div class="note">Напиши первое сообщение 👋</div>'}</div><div class="cin"><input type="text" id="mi" maxlength="1000" placeholder="Сообщение…" value="${esc(chatD)}"><button data-a="msend">→</button></div>`;
+  }
+  const by={};for(const m of msgs){const o=m.sender_id===me.id?m.recipient_id:m.sender_id;(by[o]=by[o]||[]).push(m)}
+  const ids=Object.keys(by).sort((a,b)=>new Date(last(by[b]).created_at)-new Date(last(by[a]).created_at));
+  if(!ids.length)return '<div class="note">Сообщений пока нет.<br>Открой чей-нибудь профиль и нажми «Написать».</div>';
+  return ids.map(o=>{const l=last(by[o]),u=by[o].filter(m=>m.recipient_id===me.id&&!m.read_at).length;return `<div class="card pad row" data-a="chat" data-id="${o}" style="cursor:pointer">${av(o,1)}<div style="flex:1;min-width:0"><div class="who">${name(o)}</div><div class="mut" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.sender_id===me.id?"Ты: ":""}${esc(l.text)}</div></div>${u?`<i class="dot">${u}</i>`:""}</div>`}).join("");
+}
+function sub(){
+  if(ch){sb.removeChannel(ch);ch=null}if(!me)return;
+  ch=sb.channel("dm-"+me.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:"recipient_id=eq."+me.id},pl=>{const m=pl.new;if(msgs.some(x=>x.id===m.id))return;msgs.push(m);if(tab==="chat"&&chatU===m.sender_id)markRead(m.sender_id);else render()}).subscribe();
+}
+function markRead(o){let c=false;msgs.forEach(m=>{if(m.sender_id===o&&m.recipient_id===me.id&&!m.read_at){m.read_at=new Date().toISOString();c=true}});if(c)sb.rpc("mark_read",{other:o});render()}
 const score=(p,t)=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filter(x=>x.post_id===p.id).length;return(l+c*2+1)/Math.pow((Date.now()-new Date(t||p.created_at))/864e5+1,.7)};
 
 function card(p,by){
@@ -186,12 +210,13 @@ function authUI(){
 function render(){
   if(!me&&document.activeElement&&document.activeElement.closest("#authbox"))return;
   app.querySelectorAll("[data-c]").forEach(i=>drafts[i.dataset.c]=i.value);
-  if($("#cap"))capD=$("#cap").value;if($("#bio"))bioD=$("#bio").value;
-  const qf=document.activeElement&&document.activeElement.id==="q";
+  if($("#cap"))capD=$("#cap").value;if($("#bio"))bioD=$("#bio").value;if($("#mi"))chatD=$("#mi").value;
+  const qf=document.activeElement&&document.activeElement.id==="q",mf2=document.activeElement&&document.activeElement.id==="mi";
   if(!me)return authUI();
   if(!P[me.id]){app.innerHTML='<div class="note">Загрузка профиля…</div>';return}
   $("#nav").style.display="flex";$("#me").textContent="@"+nick(me.id);
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("cur",b.dataset.tab===tab));
+  {const un=unread();$("#chatbtn").innerHTML=`<span>💬${un?`<i class="dot">${un}</i>`:""}</span>Чаты`}
   let h="";
   if(tab==="feed"){const mf=new Set(fol.filter(f=>f.follower_id===me.id).map(f=>f.following_id)),it=[],seen=new Set();for(const r of rep){const p=posts.find(x=>x.id===r.post_id);if(mf.has(r.user_id)&&p&&p.user_id!==me.id&&!seen.has(p.id)){seen.add(p.id);it.push({p,by:r.user_id,s:score(p,r.created_at)})}}for(const p of posts)if(!seen.has(p.id))it.push({p,by:null,s:score(p)});it.sort((a,b)=>b.s-a.s);h=it.length?it.map(x=>card(x.p,x.by)).join(""):'<div class="note">Пока нет постов. Нажми ➕ и опубликуй первое фото!</div>'}
   else if(tab==="search"){
@@ -201,19 +226,20 @@ function render(){
       if(pp.length){h+='<h4 class="mut">Люди</h4>'+pp.map(k=>`<div class="card pad row" data-a="user" data-id="${k}" style="cursor:pointer">${av(k,1)}<div><div class="who">${name(k)}</div><div class="mut">${esc((P[k].bio||"").slice(0,60))}</div></div></div>`).join("")}
       if(ps.length)h+='<h4 class="mut">Посты</h4>'+ps.map(p=>card(p)).join("");
       if(!pp.length&&!ps.length)h+='<div class="note">Ничего не найдено</div>'}
-  }else if(tab==="add"){
+  }else if(tab==="chat"){h=chatHTML()}else if(tab==="add"){
     h=`<div class="card pad big"><h3 style="margin-top:0">Новый пост</h3><input type="file" id="file" accept="image/*" multiple hidden><button class="pickz" data-a="pick" ${pend.length>=10?"disabled":""}>${pend.length?`📷 Добавить ещё (${pend.length}/10)`:"📷 Выбрать фото (до 10)"}</button><div class="thumbs">${pend.map((x,i)=>`<div class="th"><img src="${x.u}" alt="" data-a="edit" data-id="${i}"><b data-a="rm" data-id="${i}">✕</b><i class="pen">✏️</i></div>`).join("")}</div>${pend.length?'<div class="mut" style="margin-top:6px">Нажми на фото, чтобы нарисовать или добавить текст ✏️</div>':""}<textarea id="cap" maxlength="500" placeholder="Что расскажешь про эти фото?" style="margin-top:12px;height:140px">${esc(capD)}</textarea><button data-a="pub" id="pub" style="width:100%;margin-top:10px">Опубликовать</button></div>`;
   }else{
     const pu=viewU||me.id,pr=P[pu]||{},own=pu===me.id,mp=posts.filter(p=>p.user_id===pu),lk=likes.filter(l=>mp.some(p=>p.id===l.post_id)).length;
     h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad prof"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div><b>${FC[pu]||0}</b><span class="mut">подписчиков</span></div>${own?`<div><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div>`:""}</div></div></div>`;
     if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="300" placeholder="Расскажи о себе (до 300 символов)" style="height:170px">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><div class="mut" id="bioc" style="text-align:right">${(bioD!==null?bioD:(pr.bio||"")).length}/300</div><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div>`;
-    else{const isF=fol.some(f=>f.follower_id===me.id&&f.following_id===pu);h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p><button data-a="follow" data-id="${pu}" class="${isF?"out":""}">${isF?"Вы подписаны ✓":"Подписаться"}</button>`}
+    else{const isF=fol.some(f=>f.follower_id===me.id&&f.following_id===pu);h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p><button data-a="follow" data-id="${pu}" class="${isF?"out":""}">${isF?"Вы подписаны ✓":"Подписаться"}</button><button data-a="write" data-id="${pu}" class="out" style="margin-left:8px">💬 Написать</button>`}
     h+="</div>"+(()=>{const canR=own||fol.some(f=>f.follower_id===me.id&&f.following_id===pu),it=[...mp.map(p=>({p,by:null,t:p.created_at})),...(canR?rep.filter(r=>r.user_id===pu).map(r=>({p:posts.find(x=>x.id===r.post_id),by:pu,t:r.created_at})).filter(x=>x.p):[])].sort((a,b)=>new Date(b.t)-new Date(a.t));return it.length?it.map(x=>card(x.p,x.by)).join(""):'<div class="note">Постов пока нет</div>'})();
   }
   app.innerHTML=h;
   app.querySelectorAll("[data-c]").forEach(i=>i.value=drafts[i.dataset.c]||"");
   app.querySelectorAll("[data-car]").forEach(c=>{const id=c.dataset.car;c.scrollLeft=(carPos[id]||0)*c.clientWidth;c.onscroll=()=>{const i=Math.round(c.scrollLeft/c.clientWidth);if(carPos[id]!==i){carPos[id]=i;const b=$("#bd-"+id);if(b)b.textContent=(i+1)+"/"+c.dataset.n}}});
   const qi=$("#q");if(qi&&qf){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length)}
+  const mi=$("#mi");if(mi&&mf2){mi.focus();mi.setSelectionRange(mi.value.length,mi.value.length)}
   pulse=null;
 }
 
@@ -237,6 +263,9 @@ app.addEventListener("click",async e=>{
   if(a==="logout"){await sb.auth.signOut();return}
   if(a==="user"){tab="me";viewU=id===me.id?null:id;render();return scrollTo(0,0)}
   if(a==="back"){viewU=null;return render()}
+  if(a==="chat"||a==="write"){tab="chat";chatU=id;viewU=null;chatD="";markRead(id);return scrollTo(0,document.body.scrollHeight)}
+  if(a==="cback"){chatU=null;return render()}
+  if(a==="msend"){const i=$("#mi"),tx=i.value.trim();if(!tx)return;chatD="";const m={id:crypto.randomUUID(),sender_id:me.id,recipient_id:chatU,text:tx,created_at:new Date().toISOString(),read_at:null};msgs.push(m);render();scrollTo(0,document.body.scrollHeight);const {error}=await sb.from("messages").insert(m);if(error){msgs=msgs.filter(x=>x!==m);render();alert("Не отправилось: "+error.message)}return}
   if(a==="pick")return $("#file").click();
   if(a==="chg")return $("#avf").click();
   if(a==="rm"){pend.splice(+id,1);return render()}
@@ -266,15 +295,16 @@ app.addEventListener("change",async e=>{
   }catch(x){alert("Не получилось: "+(x.message||x))}
 });
 app.addEventListener("input",e=>{if(e.target.id==="q"){q=e.target.value;render()}if(e.target.id==="bio")$("#bioc").textContent=e.target.value.length+"/300"});
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;viewU=null;render();scrollTo(0,0)});
+app.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="mi"){e.preventDefault();const b=app.querySelector('[data-a="msend"]');if(b)b.click()}});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;viewU=null;chatU=null;render();scrollTo(0,0)});
 
 (async()=>{
   try{
     const {data}=await sb.auth.getSession();me=data.session?data.session.user:null;
-    if(me)await load();else render();
+    if(me){await load();sub()}else render();
   }catch(e){app.innerHTML='<div class="note">Не удаётся подключиться. Проверь интернет.</div>'}
   hide();
-  sb.auth.onAuthStateChange((ev,s)=>{const u=s?s.user:null;if((u&&u.id)!==(me&&me.id)){me=u;if(me){tab="feed";load()}else render()}});
+  sb.auth.onAuthStateChange((ev,s)=>{const u=s?s.user:null;if((u&&u.id)!==(me&&me.id)){me=u;if(me){tab="feed";load();sub()}else{msgs=[];chatU=null;sub();render()}}});
   setInterval(()=>{const ae=document.activeElement;if(me&&!document.hidden&&!(ae&&/INPUT|TEXTAREA/.test(ae.tagName)))load()},20000);
 })();
 </script>
