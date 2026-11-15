@@ -205,6 +205,12 @@ async function pushOn(){
   }catch(e){return "Ошибка: "+(e.message||e)}
   return "";
 }
+async function pushStatus(){
+  if(!("serviceWorker" in navigator)||!("PushManager" in window))return "Этот браузер не поддерживает пуш-уведомления";
+  const perm=typeof Notification!=="undefined"?Notification.permission:"нет";let has="нет";
+  try{const reg=await navigator.serviceWorker.getRegistration(),sub=reg&&await reg.pushManager.getSubscription();has=sub?"да":"нет"}catch(e){}
+  return "Разрешение: "+({granted:"выдано",denied:"запрещено (включи в настройках браузера)",default:"не запрошено"}[perm]||perm)+" · подписка на этом устройстве: "+has;
+}
 async function pushOff(){try{const reg=await navigator.serviceWorker.getRegistration(),sub=reg&&await reg.pushManager.getSubscription();if(sub){await sb.from("push_subs").delete().eq("endpoint",sub.endpoint);await sub.unsubscribe()}}catch(e){}}
 function refreshPush(){if(notifOn()&&"serviceWorker" in navigator&&"PushManager" in window&&typeof Notification!=="undefined"&&Notification.permission==="granted")pushOn()}
 function go(h){const m=/^(chat|user)=(.+)$/.exec((h||"").replace(/^#/,""));if(!m||!me)return;history.replaceState(null,"",location.pathname);if(m[1]==="chat"){tab="chat";chatU=m[2];viewU=null;markRead(m[2])}else{tab="me";viewU=m[2]===me.id?null:m[2];render()}}
@@ -231,7 +237,7 @@ function sub(){
   if(ch){sb.removeChannel(ch);ch=null}if(!me)return;
   ch=sb.channel("dm-"+me.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"messages",filter:"recipient_id=eq."+me.id},pl=>{const m=pl.new;if(msgs.some(x=>x.id===m.id))return;if(!(tab==="chat"&&chatU===m.sender_id&&!document.hidden))note("💬 "+nick(m.sender_id),m.text,()=>{tab="chat";chatU=m.sender_id;viewU=null;markRead(m.sender_id)});msgs.push(m);if(tab==="chat"&&chatU===m.sender_id&&!document.hidden){markRead(m.sender_id);scrollTo(0,document.body.scrollHeight)}else render()}).on("postgres_changes",{event:"INSERT",schema:"public",table:"posts"},pl=>{const p=pl.new;if(!p||p.user_id===me.id)return;if(fol.some(f=>f.follower_id===me.id&&f.following_id===p.user_id)){note("🆕 "+nick(p.user_id),"опубликовал(а) новый пост",()=>{tab="me";viewU=p.user_id;render()})}if(!posts.some(x=>x.id===p.id)){posts.unshift(p);render()}}).on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages",filter:"sender_id=eq."+me.id},pl=>{const m=msgs.find(x=>x.id===pl.new.id);if(m&&pl.new.read_at){m.read_at=pl.new.read_at;render()}}).subscribe();
 }
-function markRead(o){let c=false;msgs.forEach(m=>{if(m.sender_id===o&&m.recipient_id===me.id&&!m.read_at){m.read_at=new Date().toISOString();c=true}});if(c)sb.rpc("mark_read",{other:o});render()}
+function markRead(o){let c=false;msgs.forEach(m=>{if(m.sender_id===o&&m.recipient_id===me.id&&!m.read_at){m.read_at=new Date().toISOString();c=true}});if(c)sb.from("messages").update({read_at:new Date().toISOString()}).eq("sender_id",o).eq("recipient_id",me.id).is("read_at",null).then(r=>{if(r.error)console.error(r.error)});render()}
 const score=(p,t)=>{const l=likes.filter(x=>x.post_id===p.id).length,c=coms.filter(x=>x.post_id===p.id).length;return(l+c*2+1)/Math.pow((Date.now()-new Date(t||p.created_at))/864e5+1,.7)};
 
 function card(p,by){
@@ -257,6 +263,7 @@ function render(){
   const qf=document.activeElement&&document.activeElement.id==="q",mf2=document.activeElement&&document.activeElement.id==="mi",ef=document.activeElement&&document.activeElement.id==="ec";
   if(!me)return authUI();
   if(!P[me.id]){app.innerHTML='<div class="note">Загрузка профиля…</div>';return}
+  if(tab==="chat"&&chatU&&!document.hidden&&msgs.some(m=>m.sender_id===chatU&&m.recipient_id===me.id&&!m.read_at))return markRead(chatU);
   $("#nav").style.display=(tab==="chat"&&chatU)?"none":"flex";$("#me").textContent="@"+nick(me.id);
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("cur",b.dataset.tab===tab));
   {const un=unread();$("#chatbtn").innerHTML=`<span>💬${un?`<i class="dot">${un}</i>`:""}</span>Чаты`}
@@ -274,7 +281,7 @@ function render(){
   }else{
     const pu=viewU||me.id,pr=P[pu]||{},own=pu===me.id,mp=posts.filter(p=>p.user_id===pu),lk=likes.filter(l=>mp.some(p=>p.id===l.post_id)).length;
     h=(own?"":'<button class="ghost" data-a="back">← Назад</button>')+`<div class="card pad prof"><div class="row" style="gap:14px">${av(pu)}<div><div class="who" style="cursor:default;font-size:20px">${name(pu)}</div><div class="stats"><div><b>${mp.length}</b><span class="mut">постов</span></div><div><b>${lk}</b><span class="mut">лайков</span></div><div ${own?'data-a="flist" data-id="in" style="cursor:pointer"':""}><b>${FC[pu]||0}</b><span class="mut">подписчиков</span></div>${own?`<div data-a="flist" data-id="out" style="cursor:pointer"><b>${fol.filter(f=>f.follower_id===pu).length}</b><span class="mut">подписок</span></div>`:""}</div></div></div>`;
-    if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="300" placeholder="Расскажи о себе (до 300 символов)" style="height:170px">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><div class="mut" id="bioc" style="text-align:right">${(bioD!==null?bioD:(pr.bio||"")).length}/300</div><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div><div style="margin-top:12px"><button class="out" data-a="notif">${notifOn()?"🔔 Уведомления: вкл":"🔕 Включить уведомления"}</button></div>`;
+    if(own)h+=`<div style="margin-top:12px"><textarea id="bio" maxlength="300" placeholder="Расскажи о себе (до 300 символов)" style="height:170px">${esc(bioD!==null?bioD:(pr.bio||""))}</textarea><div class="mut" id="bioc" style="text-align:right">${(bioD!==null?bioD:(pr.bio||"")).length}/300</div><button data-a="savebio" style="margin-top:8px">Сохранить описание</button></div><input type="file" id="avf" accept="image/*" hidden><div class="row" style="margin-top:12px"><button class="out" data-a="chg">📷 Сменить фото</button><button class="out" data-a="logout">Выйти</button></div><div style="margin-top:12px"><button class="out" data-a="notif">${notifOn()?"🔔 Уведомления: вкл":"🔕 Включить уведомления"}</button><div class="mut" id="pst" style="margin-top:6px"></div></div>`;
     else{const isF=fol.some(f=>f.follower_id===me.id&&f.following_id===pu);h+=`<p>${pr.bio?esc(pr.bio):'<span class="mut">Описания пока нет</span>'}</p><button data-a="follow" data-id="${pu}" class="${isF?"out":""}">${isF?"Вы подписаны ✓":"Подписаться"}</button><button data-a="write" data-id="${pu}" class="out" style="margin-left:8px">💬 Написать</button>`}
     h+="</div>"+(()=>{const canR=own||fol.some(f=>f.follower_id===me.id&&f.following_id===pu),it=[...mp.map(p=>({p,by:null,t:p.created_at})),...(canR?rep.filter(r=>r.user_id===pu).map(r=>({p:posts.find(x=>x.id===r.post_id),by:pu,t:r.created_at})).filter(x=>x.p):[])].sort((a,b)=>new Date(b.t)-new Date(a.t));return it.length?it.map(x=>card(x.p,x.by)).join(""):'<div class="note">Постов пока нет</div>'})();
   }
@@ -284,6 +291,7 @@ function render(){
   const qi=$("#q");if(qi&&qf){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length)}
   const mi=$("#mi");if(mi&&mf2){mi.focus();mi.setSelectionRange(mi.value.length,mi.value.length)}
   const ecx=$("#ec");if(ecx&&ef){ecx.focus();ecx.setSelectionRange(ecx.value.length,ecx.value.length)}
+  if($("#pst"))pushStatus().then(t=>{const e=$("#pst");if(e)e.textContent=t});
   pulse=null;
 }
 
